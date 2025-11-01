@@ -2,28 +2,40 @@
   "name": "ai-news-collector",
   "version": "1.0.0",
   "type": "module",
-  "description": "AI新闻自动采集与过滤工作流",
+  "description": "AI 新闻采集器 - 从多个数据源采集 AI 相关新闻并使用 LLM 智能过滤",
   "main": "src/index.js",
   "scripts": {
-    "test:composio": "node test-composio.js",
-    "start": "node src/index.js"
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "test": "vitest",
+    "test:unit": "vitest run",
+    "test:coverage": "vitest --coverage",
+    "test:watch": "vitest --watch"
   },
-  "dependencies": {
-    "@composio/core": "latest",
-    "axios": "^1.13.1",
-    "cheerio": "^1.1.2",
-    "dotenv": "^16.3.1"
-  },
+  "keywords": [
+    "ai",
+    "news",
+    "collector",
+    "llm",
+    "filter"
+  ],
+  "author": "",
+  "license": "MIT",
   "engines": {
     "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "axios": "^1.13.1",
+    "cheerio": "^1.1.2",
+    "dotenv": "^16.6.1",
+    "openai": "^6.7.0",
+    "puppeteer": "^24.27.0",
+    "string-similarity": "^4.0.4"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/XiaogeAIBreaker/ai-news-collector.git"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "bugs": {
     "url": "https://github.com/XiaogeAIBreaker/ai-news-collector/issues"
   },

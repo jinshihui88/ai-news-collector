@@ -21,13 +21,13 @@
 
 **目标**: 建立项目基础结构和开发环境
 
-- [ ] T001 初始化 Node.js 项目,创建 package.json 并设置 type: module
-- [ ] T002 [P] 创建项目目录结构(src/, config/, output/)
-- [ ] T003 [P] 创建 .gitignore 文件,排除 node_modules/, .env, output/
-- [ ] T004 安装核心依赖: openai, axios, cheerio, dotenv, string-similarity
-- [ ] T005 [P] 安装可选依赖: puppeteer, puppeteer-extra, puppeteer-extra-plugin-stealth
-- [ ] T006 [P] 创建 .env.example 文件,列出所需环境变量
-- [ ] T007 [P] 创建 config/filter-rules.json 示例配置文件
+- [X] T001 初始化 Node.js 项目,创建 package.json 并设置 type: module
+- [X] T002 [P] 创建项目目录结构(src/, config/, output/)
+- [X] T003 [P] 创建 .gitignore 文件,排除 node_modules/, .env, output/
+- [X] T004 安装核心依赖: openai, axios, cheerio, dotenv, string-similarity
+- [X] T005 [P] 安装可选依赖: puppeteer, puppeteer-extra, puppeteer-extra-plugin-stealth (跳过 - 无需测试)
+- [X] T006 [P] 创建 .env.example 文件,列出所需环境变量
+- [X] T007 [P] 创建 config/filter-rules.json 示例配置文件
 
 ---
 
@@ -37,17 +37,17 @@
 
 ### 数据模型
 
-- [ ] T008 [P] 创建 src/models/news-item.js,定义 NewsItem 类和验证方法
+- [X] T008 [P] 创建 src/models/news-item.js,定义 NewsItem 类和验证方法
 
 ### 配置管理
 
-- [ ] T009 创建 src/config/loader.js,实现配置文件加载和验证
-- [ ] T010 [P] 创建 src/config/datasources.js,定义 AIBase 数据源配置
+- [X] T009 创建 src/config/loader.js,实现配置文件加载和验证
+- [X] T010 [P] 创建 src/config/datasources.js,定义 AIBase 数据源配置
 
 ### 工具类
 
-- [ ] T011 [P] 创建 src/services/retry.js,实现指数退避重试机制
-- [ ] T012 [P] 创建 src/utils/logger.js,实现彩色日志输出工具
+- [X] T011 [P] 创建 src/services/retry.js,实现指数退避重试机制
+- [X] T012 [P] 创建 src/utils/logger.js,实现彩色日志输出工具
 
 ---
 
@@ -63,15 +63,15 @@
 
 ### 配置加载模块
 
-- [ ] T013 [US1] 在 src/config/loader.js 中实现 loadFilterConfig() 函数
-- [ ] T014 [US1] 实现 JSON 格式验证,格式错误时输出清晰错误信息
-- [ ] T015 [US1] 实现样例验证逻辑,检查正反面样例非空(FR-014)
-- [ ] T016 [US1] 实现样例摘要长度验证(100-200字符,FR-003)
-- [ ] T017 [US1] 配置加载失败时,输出错误并调用 process.exit(1)
+- [X] T013 [US1] 在 src/config/loader.js 中实现 loadFilterConfig() 函数
+- [X] T014 [US1] 实现 JSON 格式验证,格式错误时输出清晰错误信息
+- [X] T015 [US1] 实现样例验证逻辑,检查正反面样例非空(FR-014)
+- [X] T016 [US1] 实现样例摘要长度验证(100-200字符,FR-003)
+- [X] T017 [US1] 配置加载失败时,输出错误并调用 process.exit(1)
 
 ### 日志输出
 
-- [ ] T018 [P] [US1] 配置加载成功时,在控制台输出样例数量和关键词数量
+- [X] T018 [P] [US1] 配置加载成功时,在控制台输出样例数量和关键词数量
 
 **验收**:
 - ✅ 配置文件包含正反面样例时,系统正常加载
@@ -97,60 +97,60 @@
 
 #### 采集器基础
 
-- [ ] T019 [US2] 创建 src/collectors/base.js,定义 BaseCollector 抽象类
-- [ ] T020 [US2] 在 BaseCollector 中实现 retryWithBackoff() 方法
-- [ ] T021 [US2] 在 BaseCollector 中实现 validateNewsItem() 方法
+- [X] T019 [US2] 创建 src/collectors/base.js,定义 BaseCollector 抽象类
+- [X] T020 [US2] 在 BaseCollector 中实现 retryWithBackoff() 方法
+- [X] T021 [US2] 在 BaseCollector 中实现 validateNewsItem() 方法
 
 #### AIBase 采集器实现
 
-- [ ] T022 [US2] 创建 src/collectors/aibase.js,继承 BaseCollector
-- [ ] T023 [US2] 实现 scrapeWithCheerio() 方法,使用 axios + cheerio 抓取网页
-- [ ] T024 [US2] 实现 HTML 选择器提取新闻标题、摘要、URL
-- [ ] T025 [US2] 实现 scrapeWithPuppeteer() 方法作为降级方案
-- [ ] T026 [US2] 实现 collect() 方法,优先 Cheerio,失败时切换 Puppeteer
-- [ ] T027 [US2] 为每条新闻生成 UUID 作为 id,记录 fetchedAt 时间
-- [ ] T028 [US2] 限制采集数量为 10 条(maxItems),验证必填字段
+- [X] T022 [US2] 创建 src/collectors/aibase.js,继承 BaseCollector
+- [X] T023 [US2] 实现 scrapeWithCheerio() 方法,使用 axios + cheerio 抓取网页
+- [X] T024 [US2] 实现 HTML 选择器提取新闻标题、摘要、URL
+- [X] T025 [US2] 实现 scrapeWithPuppeteer() 方法作为降级方案
+- [X] T026 [US2] 实现 collect() 方法,优先 Cheerio,失败时切换 Puppeteer
+- [X] T027 [US2] 为每条新闻生成 UUID 作为 id,记录 fetchedAt 时间
+- [X] T028 [US2] 限制采集数量为 10 条(maxItems),验证必填字段
 
 ### Acceptance Scenario 2: LLM 分析用户偏好并评分
 
 #### LLM 客户端封装
 
-- [ ] T029 [US2] 创建 src/services/llm-client.js,封装 DeepSeek API 调用
-- [ ] T030 [US2] 实现 scoreNewsItem() 方法,接收 newsItem 和 filterConfig
-- [ ] T031 [US2] 构建系统提示词,包含正反面样例(支持 prompt caching)
-- [ ] T032 [US2] 构建用户提示词,包含新闻标题和摘要
-- [ ] T033 [US2] 使用 JSON Mode (response_format: 'json_object') 确保输出格式
-- [ ] T034 [US2] 解析 LLM 响应,提取 score 和 reason 字段
-- [ ] T035 [US2] 记录 token 使用量(input, output, cache hit)
+- [X] T029 [US2] 创建 src/services/llm-client.js,封装 DeepSeek API 调用
+- [X] T030 [US2] 实现 scoreNewsItem() 方法,接收 newsItem 和 filterConfig
+- [X] T031 [US2] 构建系统提示词,包含正反面样例(支持 prompt caching)
+- [X] T032 [US2] 构建用户提示词,包含新闻标题和摘要
+- [X] T033 [US2] 使用 JSON Mode (response_format: 'json_object') 确保输出格式
+- [X] T034 [US2] 解析 LLM 响应,提取 score 和 reason 字段
+- [X] T035 [US2] 记录 token 使用量(input, output, cache hit)
 
 #### 过滤流程
 
-- [ ] T036 [US2] 创建 src/services/orchestrator.js,实现主流程编排
-- [ ] T037 [US2] 实现批量评分逻辑,每批 10 条并发处理
-- [ ] T038 [US2] 使用 Promise.allSettled 处理批量评分,单条失败不影响其他
-- [ ] T039 [US2] 实现动态阈值过滤,按评分排序,保留 top 10-30%
-- [ ] T040 [US2] 标记通过过滤的新闻(isPassed: true)
+- [X] T036 [US2] 创建 src/services/orchestrator.js,实现主流程编排
+- [X] T037 [US2] 实现批量评分逻辑,每批 10 条并发处理
+- [X] T038 [US2] 使用 Promise.allSettled 处理批量评分,单条失败不影响其他
+- [X] T039 [US2] 实现动态阈值过滤,按评分排序,保留 top 10-30%
+- [X] T040 [US2] 标记通过过滤的新闻(isPassed: true)
 
 ### Acceptance Scenario 3: 生成 Markdown 输出
 
 #### Markdown 生成器
 
-- [ ] T041 [US2] 创建 src/output/markdown.js,实现 Markdown 生成器
-- [ ] T042 [US2] 生成文档头部(采集时间、总数、过滤后数量、过滤率)
-- [ ] T043 [US2] 按评分从高到低遍历新闻,生成 Markdown 章节
-- [ ] T044 [US2] 每条新闻包含标题、来源、链接、发布时间、评分、摘要、评分理由
-- [ ] T045 [US2] 将 Markdown 内容写入 output/filtered-news.md 文件
-- [ ] T046 [US2] 文件写入成功后,输出文件路径到控制台
+- [X] T041 [US2] 创建 src/output/markdown.js,实现 Markdown 生成器
+- [X] T042 [US2] 生成文档头部(采集时间、总数、过滤后数量、过滤率)
+- [X] T043 [US2] 按评分从高到低遍历新闻,生成 Markdown 章节
+- [X] T044 [US2] 每条新闻包含标题、来源、链接、发布时间、评分、摘要、评分理由
+- [X] T045 [US2] 将 Markdown 内容写入 output/filtered-news.md 文件
+- [X] T046 [US2] 文件写入成功后,输出文件路径到控制台
 
 #### CLI 入口
 
-- [ ] T047 [US2] 创建 src/index.js,实现 CLI 入口
-- [ ] T048 [US2] 加载环境变量(dotenv),验证 DEEPSEEK_API_KEY 存在
-- [ ] T049 [US2] 调用 loadFilterConfig(),加载并验证配置
-- [ ] T050 [US2] 调用 AIBase collector.collect(),采集新闻
-- [ ] T051 [US2] 调用 orchestrator.execute(),执行 LLM 评分和过滤
-- [ ] T052 [US2] 调用 markdown generator,生成输出文件
-- [ ] T053 [US2] 使用 try-catch 捕获错误,输出友好错误信息
+- [X] T047 [US2] 创建 src/index.js,实现 CLI 入口
+- [X] T048 [US2] 加载环境变量(dotenv),验证 DEEPSEEK_API_KEY 存在
+- [X] T049 [US2] 调用 loadFilterConfig(),加载并验证配置
+- [X] T050 [US2] 调用 AIBase collector.collect(),采集新闻
+- [X] T051 [US2] 调用 orchestrator.execute(),执行 LLM 评分和过滤
+- [X] T052 [US2] 调用 markdown generator,生成输出文件
+- [X] T053 [US2] 使用 try-catch 捕获错误,输出友好错误信息
 
 **验收**:
 - ✅ 从 AIBase 成功采集 10 条新闻
@@ -326,9 +326,5 @@ Group C: T041-T046 (Markdown 生成器)
 2. **第一个里程碑**: 完成 Phase 4,实现端到端流程
 3. **验证 MVP**: 手动测试完整采集、评分、输出流程
 4. **迭代优化**: 根据实际使用情况,添加 Phase 5-6 功能
-
-**预估时间**:
-- MVP (Phase 1-4): 6-8 小时
-- 完整实现 (Phase 1-6): 10-12 小时
 
 开始编码吧! 🚀

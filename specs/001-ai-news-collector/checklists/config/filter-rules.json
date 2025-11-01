@@ -1,0 +1,45 @@
+{
+  "version": "1.0",
+  "lastUpdated": "2025-11-01T10:00:00Z",
+  "positiveExamples": [
+    {
+      "title": "OpenAI 发布 GPT-5,性能大幅提升",
+      "summary": "OpenAI 最新发布的 GPT-5 模型在多项基准测试中超越前代,特别是在数学推理和代码生成方面表现突出。新模型支持 128K 上下文窗口,并改进了多模态能力。",
+      "reason": "关注主流 AI 公司的重大产品发布"
+    },
+    {
+      "title": "DeepMind 推出 AlphaFold 3,蛋白质结构预测再突破",
+      "summary": "DeepMind 发布 AlphaFold 3,预测精度提升至 95%,并支持蛋白质-配体复合物结构预测。这一突破将加速新药研发进程,在生物医药领域具有重大意义。",
+      "reason": "AI 在科研领域的重大突破"
+    }
+  ],
+  "negativeExamples": [
+    {
+      "title": "某小公司发布 AI 聊天机器人",
+      "summary": "某不知名创业公司今天宣布推出一款基于 GPT-3 的聊天机器人产品,功能与市面上现有产品类似,未见明显创新。产品定价较高,市场前景不明朗。",
+      "reason": "过滤无创新性的跟风产品"
+    },
+    {
+      "title": "XX公司CEO谈AI未来",
+      "summary": "某公司CEO在采访中表示看好AI发展前景,认为AI将改变世界。内容空泛,缺乏实质性信息和技术细节。",
+      "reason": "过滤内容空洞的观点文章"
+    }
+  ],
+  "keywords": [
+    "AI",
+    "人工智能",
+    "机器学习",
+    "深度学习",
+    "大模型",
+    "LLM",
+    "GPT",
+    "Claude",
+    "神经网络",
+    "Transformer"
+  ],
+  "thresholdConfig": {
+    "minPercentage": 10,
+    "maxPercentage": 30,
+    "preferredCount": 15
+  }
+}
