@@ -3,7 +3,8 @@ import * as cheerio from 'cheerio';
 import { BaseCollector } from './base.js';
 import { NewsItem } from '../models/news-item.js';
 import { AIBASE_CONFIG } from '../config/datasources.js';
-import { withTimeout } from '../services/retry.js';
+import { AIBASE_SELECTORS, SelectorUtils } from './selectors.js';
+import { COLLECTOR_CONSTANTS } from '../config/constants.js';
 
 /**
  * AIBase 采集器
@@ -169,71 +170,49 @@ export class AIBaseCollector extends BaseCollector {
    * 提取标题
    */
   extractTitle($elem) {
-    // 尝试多个可能的选择器
-    const selectors = ['h1', 'h2', 'h3', '.title', '.headline', 'a'];
-    for (const sel of selectors) {
-      const text = $elem.find(sel).first().text();
-      if (text && text.trim().length > 0) {
-        return text.trim();
-      }
-    }
-    return null;
+    return SelectorUtils.trySelectors(
+      $elem,
+      AIBASE_SELECTORS.title,
+      ($el, selector) => SelectorUtils.extractText($el, selector, 1)
+    );
   }
 
   /**
    * 提取摘要
    */
   extractSummary($elem) {
-    // 尝试多个可能的选择器
-    const selectors = ['.summary', '.description', '.excerpt', '.content', 'p'];
-    for (const sel of selectors) {
-      const text = $elem.find(sel).first().text();
-      if (text && text.trim().length >= 10) {
-        return text.trim();
-      }
-    }
-    
+    const summary = SelectorUtils.trySelectors(
+      $elem,
+      AIBASE_SELECTORS.summary,
+      ($el, selector) => SelectorUtils.extractText($el, selector, 10)
+    );
+
     // 如果没有摘要,使用标题作为摘要
-    const title = this.extractTitle($elem);
-    return title || '';
+    return summary || this.extractTitle($elem) || '';
   }
 
   /**
    * 提取 URL
    */
   extractURL($elem) {
-    const link = $elem.find('a').first().attr('href');
-    if (!link) return null;
-
-    // 处理相对路径
-    if (link.startsWith('http')) {
-      return link;
-    } else if (link.startsWith('/')) {
-      return `https://www.aibase.com${link}`;
-    } else {
-      return `https://www.aibase.com/${link}`;
-    }
+    const link = SelectorUtils.extractAttr($elem, AIBASE_SELECTORS.link, 'href');
+    return SelectorUtils.normalizeUrl(link, 'https://www.aibase.com');
   }
 
   /**
    * 提取发布时间
    */
   extractPublishTime($elem) {
-    const selectors = ['.time', '.date', '.publish-time', 'time'];
-    for (const sel of selectors) {
-      const timeElem = $elem.find(sel).first();
-      const datetime = timeElem.attr('datetime') || timeElem.text();
-      
-      if (datetime) {
-        const date = new Date(datetime);
-        if (!isNaN(date.getTime())) {
-          return date;
-        }
+    const datetime = SelectorUtils.trySelectors(
+      $elem,
+      AIBASE_SELECTORS.time,
+      ($el, selector) => {
+        const timeElem = $el.find(selector).first();
+        return timeElem.attr('datetime') || timeElem.text() || null;
       }
-    }
-    
-    // 默认返回当前时间
-    return new Date();
+    );
+
+    return SelectorUtils.parseDateTime(datetime);
   }
 
   /**
@@ -242,6 +221,7 @@ export class AIBaseCollector extends BaseCollector {
    */
   async scrapeWithPuppeteer() {
     const puppeteer = await import('puppeteer');
+    const { PAGE_LOAD_WAIT, MAX_ITEMS } = COLLECTOR_CONSTANTS.AIBASE;
 
     this.logger.info('启动浏览器...');
     const browser = await puppeteer.default.launch({
@@ -263,12 +243,12 @@ export class AIBaseCollector extends BaseCollector {
       });
 
       // 等待更长时间让 React/Next.js 渲染完成
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      await new Promise(resolve => setTimeout(resolve, PAGE_LOAD_WAIT));
 
       this.logger.debug('等待新闻列表加载...');
 
       // 提取新闻数据
-      const newsData = await page.evaluate(() => {
+      const newsData = await page.evaluate((maxItems) => {
         const items = [];
 
         // 尝试多种选择器策略
@@ -281,7 +261,7 @@ export class AIBaseCollector extends BaseCollector {
 
         console.log(`找到 ${links.length} 个链接`);
 
-        for (let i = 0; i < Math.min(links.length, 20); i++) {
+        for (let i = 0; i < Math.min(links.length, maxItems * 2); i++) {
           const link = links[i];
 
           // 提取 URL
@@ -340,7 +320,7 @@ export class AIBaseCollector extends BaseCollector {
 
         console.log(`提取到 ${items.length} 条新闻`);
         return items;
-      });
+      }, MAX_ITEMS);
 
       this.logger.success(`提取到 ${newsData.length} 条新闻数据`);
 
