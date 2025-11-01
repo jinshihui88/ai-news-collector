@@ -1,0 +1,31 @@
+{
+  "name": "ai-news-collector",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "AI新闻自动采集与过滤工作流",
+  "main": "src/index.js",
+  "scripts": {
+    "test:composio": "node test-composio.js",
+    "start": "node src/index.js"
+  },
+  "dependencies": {
+    "@composio/core": "latest",
+    "axios": "^1.13.1",
+    "cheerio": "^1.1.2",
+    "dotenv": "^16.3.1"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/XiaogeAIBreaker/ai-news-collector.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/XiaogeAIBreaker/ai-news-collector/issues"
+  },
+  "homepage": "https://github.com/XiaogeAIBreaker/ai-news-collector#readme"
+}
