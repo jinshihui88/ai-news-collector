@@ -4,7 +4,7 @@
  */
 
 import { configLoader } from './config-loader.js';
-import { validateWeChatAccounts } from './validators.js';
+import { validateWeChatAccounts, validateZSXQGroups } from './validators.js';
 import { createLogger } from '../utils/logger.js';
 
 const logger = createLogger('DataSources');
@@ -46,13 +46,10 @@ export const ZSXQ_CONFIG = {
   maxItems: 20,
   timeout: 30000,
   config: {
-    groups: [
-      {
-        groupId: '15552545485212',
-        groupName: 'AI风向标',
-        tags: ['中标', 'AI风向标']
-      }
-    ],
+    // 使用 getter 延迟加载星球配置
+    get groups() {
+      return loadZSXQGroups();
+    },
     apiBase: 'https://api.zsxq.com/v2',
     webBase: 'https://wx.zsxq.com',
     headers: {
@@ -91,13 +88,38 @@ function loadWeChatAccounts() {
 }
 
 /**
+ * 从配置文件加载知识星球分组
+ * @returns {Array} 知识星球分组数组
+ */
+function loadZSXQGroups() {
+  try {
+    const groups = configLoader.loadAndValidate(
+      'config/zsxq-groups.json',
+      validateZSXQGroups,
+      { required: false, defaultValue: [] }
+    );
+
+    if (groups && groups.length > 0) {
+      logger.info(`加载了 ${groups.length} 个知识星球配置`);
+    } else {
+      logger.warn('未配置知识星球分组');
+    }
+
+    return groups || [];
+  } catch (error) {
+    logger.error(`加载知识星球配置失败: ${error.message}`);
+    return [];
+  }
+}
+
+/**
  * 微信公众号 MP 数据源配置
  */
 export const WECHAT_MP_CONFIG = {
   name: 'WeChat-MP',
   type: 'api',
   enabled: true,
-  maxItems: 20,
+  maxItems: 10,
   timeout: 30000,
   config: {
     apiUrl: 'https://mp.weixin.qq.com/cgi-bin/appmsgpublish',
@@ -129,4 +151,3 @@ export function getEnabledDataSources() {
 
   return enabled;
 }
-

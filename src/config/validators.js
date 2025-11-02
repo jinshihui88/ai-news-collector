@@ -159,3 +159,46 @@ export function validateWeChatAccounts(accounts) {
     errors
   };
 }
+
+/**
+ * 验证知识星球分组配置
+ * @param {Array} groups - 知识星球分组数组
+ * @returns {{ valid: boolean, errors: string[] }}
+ */
+export function validateZSXQGroups(groups) {
+  const errors = [];
+
+  if (!Array.isArray(groups)) {
+    errors.push('配置必须是数组');
+    return { valid: false, errors };
+  }
+
+  groups.forEach((group, index) => {
+    const prefix = `知识星球[${index}]`;
+
+    if (!group.groupId || typeof group.groupId !== 'string') {
+      errors.push(`${prefix}: groupId 是必填字段`);
+    }
+
+    if (!group.groupName || typeof group.groupName !== 'string') {
+      errors.push(`${prefix}: groupName 是必填字段`);
+    }
+
+    if (group.tags !== undefined) {
+      if (!Array.isArray(group.tags)) {
+        errors.push(`${prefix}: tags 必须是字符串数组`);
+      } else {
+        group.tags.forEach((tag, tagIndex) => {
+          if (typeof tag !== 'string' || tag.trim() === '') {
+            errors.push(`${prefix}: tags[${tagIndex}] 必须是非空字符串`);
+          }
+        });
+      }
+    }
+  });
+
+  return {
+    valid: errors.length === 0,
+    errors
+  };
+}
