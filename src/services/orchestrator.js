@@ -14,33 +14,44 @@ export class Orchestrator {
   }
 
   /**
-   * 执行完整的过滤流程
-   * @param {NewsItem[]} newsItems - 新闻列表
-   * @param {Object} filterConfig - 过滤配置
+   * 判断是否存在待处理的新闻数据
+   * @param {NewsItem[]} newsItems
+   * @returns {boolean}
+   */
+  hasNews(newsItems) {
+    return Array.isArray(newsItems) && newsItems.length > 0;
+  }
+
+  /**
+   * 执行完整的评分与过滤流程
+   * @param {NewsItem[]} newsItems
+   * @param {Object} filterConfig
    * @returns {Promise<{scored: Array, filtered: Array, stats: Object}>}
    */
   async execute(newsItems, filterConfig) {
+    if (!this.hasNews(newsItems)) {
+      logger.warn('接收到空的新闻列表,跳过评分流程');
+      return {
+        scored: [],
+        filtered: [],
+        stats: this.createEmptyStats()
+      };
+    }
+
     logger.info(`开始执行过滤流程,共 ${newsItems.length} 条新闻`);
     const startTime = Date.now();
 
     try {
-      // 1. LLM 批量评分
-      const scoredResults = await this.llmClient.batchScore(
-        newsItems,
-        filterConfig,
-        this.batchSize
-      );
+      // 第一步: 批量请求 LLM 完成评分
+      const scoredNews = await this.scoreNewsItems(newsItems, filterConfig);
 
-      // 2. 合并评分结果到新闻条目
-      const scoredNews = this.mergeScores(newsItems, scoredResults);
-
-      // 3. 动态阈值过滤
+      // 第二步: 根据阈值配置执行动态过滤
       const filteredNews = this.applyDynamicThreshold(
         scoredNews,
         filterConfig.thresholdConfig || {}
       );
 
-      // 4. 计算统计信息
+      // 第三步: 汇总统计信息,用于后续展示
       const stats = this.calculateStats(scoredNews, filteredNews, startTime);
 
       logger.success('过滤流程执行完成');
@@ -62,16 +73,31 @@ export class Orchestrator {
   }
 
   /**
-   * 合并评分结果到新闻条目
+   * 调用 LLM 完成评分并合并结果
+   * @param {NewsItem[]} newsItems
+   * @param {Object} filterConfig
+   * @returns {Promise<Array>}
+   */
+  async scoreNewsItems(newsItems, filterConfig) {
+    const scoredResults = await this.llmClient.batchScore(
+      newsItems,
+      filterConfig,
+      this.batchSize
+    );
+
+    return this.mergeScores(newsItems, scoredResults);
+  }
+
+  /**
+   * 将评分信息挂载回原始新闻条目
    * @param {NewsItem[]} newsItems
    * @param {Array} scoredResults
    * @returns {Array}
    */
   mergeScores(newsItems, scoredResults) {
-    const scoreMap = new Map();
-    scoredResults.forEach(result => {
-      scoreMap.set(result.newsId, result);
-    });
+    const scoreMap = new Map(
+      scoredResults.map(result => [result.newsId, result])
+    );
 
     return newsItems.map(item => {
       const scoreData = scoreMap.get(item.id);
@@ -81,6 +107,7 @@ export class Orchestrator {
           newsItem: item,
           score: 0,
           reason: '未评分',
+          error: '未评分',
           isPassed: false
         };
       }
@@ -91,85 +118,117 @@ export class Orchestrator {
         reason: scoreData.reason,
         error: scoreData.error,
         tokenUsage: scoreData.tokenUsage,
-        isPassed: false // 稍后由动态阈值过滤决定
+        isPassed: false
       };
     });
   }
 
   /**
-   * 应用动态阈值过滤
-   * 保留得分最高的 10-30% 新闻
+   * 根据动态阈值过滤得分较高的新闻
    * @param {Array} scoredNews
    * @param {Object} thresholdConfig
    * @returns {Array}
    */
   applyDynamicThreshold(scoredNews, thresholdConfig) {
+    const validNews = scoredNews.filter(item => !item.error && item.score > 0);
+    if (validNews.length === 0) {
+      logger.warn('没有有效的评分结果');
+      return [];
+    }
+
+    const sortedByScore = [...validNews].sort((a, b) => b.score - a.score);
+    const { targetCount, minCount, maxCount } = this.buildThresholdPlan(
+      sortedByScore.length,
+      thresholdConfig
+    );
+
+    const filtered = sortedByScore.slice(0, targetCount);
+    const threshold = filtered.length > 0
+      ? filtered[filtered.length - 1].score
+      : 0;
+
+    logger.info(
+      `动态阈值过滤: 阈值=${threshold.toFixed(2)}, ` +
+      `选中=${filtered.length}/${sortedByScore.length} ` +
+      `(${(filtered.length / sortedByScore.length * 100).toFixed(1)}%), ` +
+      `范围=[${minCount}, ${maxCount}]`
+    );
+
+    this.markPassed(scoredNews, filtered);
+    return filtered;
+  }
+
+  /**
+   * 计算阈值区间和最终保留数量
+   * @param {number} totalCount
+   * @param {Object} thresholdConfig
+   * @returns {{targetCount: number, minCount: number, maxCount: number}}
+   */
+  buildThresholdPlan(totalCount, thresholdConfig) {
     const {
       minPercentage = 10,
       maxPercentage = 30,
       preferredCount = 15
     } = thresholdConfig;
 
-    // 过滤掉评分失败的新闻
-    const validNews = scoredNews.filter(item => !item.error && item.score > 0);
-
-    if (validNews.length === 0) {
-      logger.warn('没有有效的评分结果');
-      return [];
-    }
-
-    // 按评分从高到低排序
-    const sorted = [...validNews].sort((a, b) => b.score - a.score);
-
-    // 计算保留数量
-    const totalCount = sorted.length;
-    const minCount = Math.ceil(totalCount * minPercentage / 100);
-    const maxCount = Math.ceil(totalCount * maxPercentage / 100);
-    const targetCount = Math.min(
-      Math.max(minCount, preferredCount),
-      maxCount
+    const minCount = Math.max(1, Math.ceil(totalCount * minPercentage / 100));
+    const maxCount = Math.max(minCount, Math.ceil(totalCount * maxPercentage / 100));
+    const targetCount = Math.max(
+      minCount,
+      Math.min(preferredCount, maxCount)
     );
 
-    // 取前 targetCount 个
-    const filtered = sorted.slice(0, targetCount);
-
-    // 计算实际阈值
-    const threshold = filtered.length > 0 ? filtered[filtered.length - 1].score : 0;
-
-    logger.info(`动态阈值过滤: 阈值=${threshold.toFixed(2)}, 选中=${filtered.length}/${totalCount} (${(filtered.length/totalCount*100).toFixed(1)}%)`);
-
-    // 标记通过的新闻
-    const passedIds = new Set(filtered.map(item => item.newsItem.id));
-    scoredNews.forEach(item => {
-      item.isPassed = passedIds.has(item.newsItem.id);
-    });
-
-    return filtered;
+    return { targetCount, minCount, maxCount };
   }
 
   /**
-   * 计算统计信息
+   * 标记通过过滤的新闻
+   * @param {Array} scoredNews
+   * @param {Array} filtered
+   * @returns {Array}
+   */
+  markPassed(scoredNews, filtered) {
+    const passedIds = new Set(filtered.map(item => item.newsItem.id));
+
+    scoredNews.forEach(item => {
+      item.isPassed = passedIds.has(item.newsItem.id);
+    });
+  }
+
+  /**
+   * 构建空统计对象
+   * @returns {Object}
+   */
+  createEmptyStats() {
+    return {
+      totalNews: 0,
+      validNews: 0,
+      filteredCount: 0,
+      filterRate: 0,
+      averageScore: 0,
+      highestScore: 0,
+      lowestScore: 0,
+      duration: 0,
+      totalTokens: 0,
+      cacheHitTokens: 0,
+      cacheHitRate: 0
+    };
+  }
+
+  /**
+   * 生成统计数据
    * @param {Array} scoredNews
    * @param {Array} filteredNews
    * @param {number} startTime
    * @returns {Object}
    */
   calculateStats(scoredNews, filteredNews, startTime) {
-    const validScores = scoredNews
-      .filter(item => !item.error && item.score > 0)
-      .map(item => item.score);
+    const validScores = this.collectValidScores(scoredNews);
+    const { totalTokens, cacheHitTokens } = this.calculateTokenStats(scoredNews);
 
     const averageScore = validScores.length > 0
       ? validScores.reduce((sum, score) => sum + score, 0) / validScores.length
       : 0;
-
-    const totalTokens = scoredNews.reduce((sum, item) => {
-      return sum + (item.tokenUsage?.totalTokens || 0);
-    }, 0);
-
-    const cacheHitTokens = scoredNews.reduce((sum, item) => {
-      return sum + (item.tokenUsage?.cacheHitTokens || 0);
-    }, 0);
 
     return {
       totalNews: scoredNews.length,
@@ -179,8 +238,8 @@ export class Orchestrator {
         ? (filteredNews.length / scoredNews.length) * 100
         : 0,
       averageScore,
-      highestScore: Math.max(...validScores, 0),
-      lowestScore: Math.min(...validScores, 10),
+      highestScore: validScores.length > 0 ? Math.max(...validScores) : 0,
+      lowestScore: validScores.length > 0 ? Math.min(...validScores) : 0,
       duration: (Date.now() - startTime) / 1000,
       totalTokens,
       cacheHitTokens,
@@ -188,5 +247,33 @@ export class Orchestrator {
         ? (cacheHitTokens / totalTokens) * 100
         : 0
     };
+  }
+
+  /**
+   * 收集所有有效分数
+   * @param {Array} scoredNews
+   * @returns {number[]}
+   */
+  collectValidScores(scoredNews) {
+    return scoredNews
+      .filter(item => !item.error && item.score > 0)
+      .map(item => item.score);
+  }
+
+  /**
+   * 统计 Token 使用情况
+   * @param {Array} scoredNews
+   * @returns {{totalTokens: number, cacheHitTokens: number}}
+   */
+  calculateTokenStats(scoredNews) {
+    return scoredNews.reduce((acc, item) => {
+      const tokenUsage = item.tokenUsage || {};
+      acc.totalTokens += tokenUsage.totalTokens || 0;
+      acc.cacheHitTokens += tokenUsage.cacheHitTokens || 0;
+      return acc;
+    }, {
+      totalTokens: 0,
+      cacheHitTokens: 0
+    });
   }
 }

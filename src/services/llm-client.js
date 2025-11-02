@@ -7,6 +7,7 @@ const logger = createLogger('LLM');
 
 /**
  * DeepSeek LLM 客户端
+ * 负责统一封装提示词构造、请求发送与结果解析
  */
 export class LLMClient {
   constructor(config = {}) {
@@ -22,49 +23,61 @@ export class LLMClient {
     this.temperature = config.temperature || parseFloat(process.env.LLM_TEMPERATURE || DEFAULT_TEMPERATURE);
     this.batchSize = config.batchSize || BATCH_SIZE;
 
-    // 初始化 OpenAI 客户端 (DeepSeek API 兼容 OpenAI 格式)
     this.client = new OpenAI({
       baseURL: 'https://api.deepseek.com',
       apiKey: process.env.DEEPSEEK_API_KEY
     });
 
-    logger.info(`LLM 客户端初始化: model=${this.model}`);
+    logger.info(`LLM 客户端初始化完成, model=${this.model}`);
+  }
+
+  /**
+   * 构建用于请求的消息体
+   * @param {Object} newsItem
+   * @param {Object} filterConfig
+   * @returns {{messages: Array}}
+   */
+  buildChatMessages(newsItem, filterConfig) {
+    const systemPrompt = buildSystemPrompt(filterConfig);
+    const userPrompt = buildUserPrompt(newsItem);
+
+    return {
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt }
+      ]
+    };
+  }
+
+  /**
+   * 构建请求参数
+   * @param {Array} messages
+  * @returns {Object}
+   */
+  buildCompletionPayload(messages) {
+    return {
+      model: this.model,
+      messages,
+      temperature: this.temperature,
+      max_tokens: this.maxTokens,
+      response_format: { type: 'json_object' }
+    };
   }
 
   /**
    * 对单条新闻进行评分
-   * @param {NewsItem} newsItem - 新闻条目
-   * @param {Object} filterConfig - 过滤配置
+   * @param {NewsItem} newsItem
+   * @param {Object} filterConfig
    * @returns {Promise<{score: number, reason: string, tokenUsage: Object}>}
    */
   async scoreNewsItem(newsItem, filterConfig) {
     try {
-      // 构建提示词
-      const systemPrompt = buildSystemPrompt(filterConfig);
-      const userPrompt = buildUserPrompt(newsItem);
+      const { messages } = this.buildChatMessages(newsItem, filterConfig);
+      const payload = this.buildCompletionPayload(messages);
+      const completion = await this.client.chat.completions.create(payload);
 
-      // 调用 DeepSeek API
-      const completion = await this.client.chat.completions.create({
-        model: this.model,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt }
-        ],
-        temperature: this.temperature,
-        max_tokens: this.maxTokens,
-        response_format: { type: 'json_object' } // JSON Mode
-      });
-
-      // 解析响应
       const result = parseResponse(completion);
-
-      // 记录 token 使用量
-      logger.debug(
-        `Token 使用: 输入=${result.tokenUsage.inputTokens}, ` +
-        `输出=${result.tokenUsage.outputTokens}, ` +
-        `缓存命中=${result.tokenUsage.cacheHitTokens}`
-      );
-
+      this.logTokenUsage(result.tokenUsage, newsItem.title);
       return result;
     } catch (error) {
       logger.error(`评分失败 (新闻ID: ${newsItem.id}): ${error.message}`);
@@ -76,57 +89,129 @@ export class LLMClient {
    * 批量评分新闻
    * @param {NewsItem[]} newsItems
    * @param {Object} filterConfig
-   * @param {number} batchSize - 每批并发数
+   * @param {number} batchSize
    * @returns {Promise<Array<{newsId: string, score: number, reason: string, error?: string}>>}
    */
   async batchScore(newsItems, filterConfig, batchSize = this.batchSize) {
-    const results = [];
-    const total = newsItems.length;
-
-    logger.info(`开始批量评分,共 ${total} 条新闻`);
-
-    for (let i = 0; i < newsItems.length; i += batchSize) {
-      const batch = newsItems.slice(i, i + batchSize);
-      const batchNum = Math.floor(i / batchSize) + 1;
-      const totalBatches = Math.ceil(newsItems.length / batchSize);
-
-      logger.info(`处理批次 ${batchNum}/${totalBatches} (第 ${i + 1}-${Math.min(i + batchSize, total)} 条)`);
-
-      // 并发处理批次
-      const promises = batch.map(async (item) => {
-        try {
-          const result = await this.scoreNewsItem(item, filterConfig);
-          return {
-            newsId: item.id,
-            score: result.score,
-            reason: result.reason,
-            tokenUsage: result.tokenUsage
-          };
-        } catch (error) {
-          logger.error(`评分失败 - 标题: ${item.title}`);
-          return {
-            newsId: item.id,
-            score: 0,
-            reason: '评分失败',
-            error: error.message
-          };
-        }
-      });
-
-      const batchResults = await Promise.allSettled(promises);
-
-      // 收集结果
-      batchResults.forEach((result) => {
-        if (result.status === 'fulfilled') {
-          results.push(result.value);
-        } else {
-          logger.error('批次处理失败:', result.reason);
-        }
-      });
+    if (!Array.isArray(newsItems) || newsItems.length === 0) {
+      logger.warn('批量评分收到空列表');
+      return [];
     }
 
-    logger.success(`批量评分完成,成功 ${results.filter(r => !r.error).length}/${total} 条`);
+    logger.info(`开始批量评分,共 ${newsItems.length} 条新闻`);
+    const batches = this.sliceIntoBatches(newsItems, batchSize);
+    const results = [];
+
+    for (let index = 0; index < batches.length; index += 1) {
+      const batch = batches[index];
+      const batchNo = index + 1;
+      logger.info(
+        `处理批次 ${batchNo}/${batches.length} ` +
+        `(第 ${this.getBatchRange(batchNo, batchSize, newsItems.length)} 条)`
+      );
+
+      const batchResults = await this.processBatch(batch, filterConfig);
+      results.push(...batchResults);
+    }
+
+    const successCount = results.filter(item => !item.error).length;
+    logger.success(`批量评分完成,成功 ${successCount}/${newsItems.length} 条`);
 
     return results;
+  }
+
+  /**
+   * 处理单个批次,内部并发调用评分
+   * @param {NewsItem[]} batch
+   * @param {Object} filterConfig
+   * @returns {Promise<Array>}
+   */
+  async processBatch(batch, filterConfig) {
+    const settled = await Promise.allSettled(
+      batch.map(item => this.scoreItemSafely(item, filterConfig))
+    );
+
+    const collected = [];
+    settled.forEach(result => {
+      if (result.status === 'fulfilled') {
+        collected.push(result.value);
+        return;
+      }
+
+      // 当 Promise 本身失败时记录详细原因
+      logger.error('批次任务执行异常:', result.reason);
+    });
+
+    return collected;
+  }
+
+  /**
+   * 安全地评分单条新闻,任何异常都转成可识别的结果
+   * @param {NewsItem} newsItem
+   * @param {Object} filterConfig
+   * @returns {Promise<Object>}
+   */
+  async scoreItemSafely(newsItem, filterConfig) {
+    try {
+      const result = await this.scoreNewsItem(newsItem, filterConfig);
+      return {
+        newsId: newsItem.id,
+        score: result.score,
+        reason: result.reason,
+        tokenUsage: result.tokenUsage
+      };
+    } catch (error) {
+      logger.error(`评分失败 - 标题: ${newsItem.title}`);
+      return {
+        newsId: newsItem.id,
+        score: 0,
+        reason: '评分失败',
+        error: error.message
+      };
+    }
+  }
+
+  /**
+   * 将数组按照批次大小拆分
+   * @param {Array} items
+   * @param {number} batchSize
+   * @returns {Array<Array>}
+   */
+  sliceIntoBatches(items, batchSize) {
+    if (batchSize <= 0) {
+      return [items];
+    }
+
+    const batches = [];
+    for (let i = 0; i < items.length; i += batchSize) {
+      batches.push(items.slice(i, i + batchSize));
+    }
+    return batches;
+  }
+
+  /**
+   * 获取批次在原始数组中的范围描述
+   * @param {number} batchNo
+   * @param {number} batchSize
+   * @param {number} total
+   * @returns {string}
+   */
+  getBatchRange(batchNo, batchSize, total) {
+    const start = (batchNo - 1) * batchSize + 1;
+    const end = Math.min(batchNo * batchSize, total);
+    return `${start}-${end}`;
+  }
+
+  /**
+   * 记录 token 使用情况,方便后续排查成本问题
+   * @param {Object} tokenUsage
+   * @param {string} title
+   */
+  logTokenUsage(tokenUsage, title) {
+    if (!tokenUsage) return;
+    logger.debug(
+      `Token 使用 | 标题="${title}" | 输入=${tokenUsage.inputTokens} | ` +
+      `输出=${tokenUsage.outputTokens} | 缓存命中=${tokenUsage.cacheHitTokens}`
+    );
   }
 }

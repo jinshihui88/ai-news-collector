@@ -1,36 +1,37 @@
 import { writeFileSync } from 'fs';
-import { join } from 'path';
+import { resolve } from 'path';
 import { createLogger } from '../utils/logger.js';
+import { ensureDirectorySync } from '../utils/fs.js';
 
 const logger = createLogger('Markdown');
 
 /**
- * Markdown 生成器
+ * Markdown 报告生成器
+ * 负责将筛选后的新闻与统计信息输出为结构化文档
  */
 export class MarkdownGenerator {
+  constructor(options = {}) {
+    this.defaultOutputPath = options.outputPath || 'output/filtered-news.md';
+  }
+
   /**
    * 生成 Markdown 文档
-   * @param {Array} filteredNews - 过滤后的新闻列表
-   * @param {Object} stats - 统计信息
-   * @param {string} outputPath - 输出文件路径
-   * @returns {Promise<string>} 输出文件的绝对路径
+   * @param {Array} filteredNews
+   * @param {Object} stats
+   * @param {string} outputPath
+   * @returns {Promise<string>}
    */
-  async generate(filteredNews, stats, outputPath = 'output/filtered-news.md') {
+  async generate(filteredNews, stats, outputPath = this.defaultOutputPath) {
     logger.info('开始生成 Markdown 文档...');
 
     try {
-      // 生成文档内容
-      const content = this.buildMarkdownContent(filteredNews, stats);
+      const absolutePath = this.resolveOutputPath(outputPath);
+      ensureDirectorySync(absolutePath);
 
-      // 确保输出目录存在
-      const absolutePath = join(process.cwd(), outputPath);
-      const dir = join(absolutePath, '..');
-      
-      // 写入文件
+      const content = this.buildMarkdownContent(filteredNews, stats);
       writeFileSync(absolutePath, content, 'utf-8');
 
       logger.success(`Markdown 文档生成成功: ${absolutePath}`);
-      
       return absolutePath;
     } catch (error) {
       logger.error('生成 Markdown 文档失败:', error.message);
@@ -39,35 +40,27 @@ export class MarkdownGenerator {
   }
 
   /**
-   * 构建 Markdown 文档内容
+   * 拼装完整的 Markdown 内容
    * @param {Array} filteredNews
    * @param {Object} stats
    * @returns {string}
    */
   buildMarkdownContent(filteredNews, stats) {
-    const sections = [];
-
-    // 1. 文档头部
-    sections.push(this.buildHeader(stats));
-
-    // 2. 统计摘要
-    sections.push(this.buildStatsSummary(stats));
-
-    // 3. 新闻列表
-    sections.push(this.buildNewsList(filteredNews));
-
-    // 4. 文档尾部
-    sections.push(this.buildFooter());
+    const sections = [
+      this.buildHeader(),
+      this.buildStatsSummary(stats),
+      this.buildNewsSection(filteredNews),
+      this.buildFooter()
+    ];
 
     return sections.join('\n\n');
   }
 
   /**
-   * 构建文档头部
-   * @param {Object} stats
+   * 构建文档头部信息
    * @returns {string}
    */
-  buildHeader(stats) {
+  buildHeader() {
     const now = new Date();
     const dateStr = now.toLocaleString('zh-CN', {
       year: 'numeric',
@@ -86,85 +79,80 @@ export class MarkdownGenerator {
   }
 
   /**
-   * 构建统计摘要
+   * 构建统计摘要表格
    * @param {Object} stats
    * @returns {string}
    */
   buildStatsSummary(stats) {
     const costEstimate = this.estimateCost(stats);
+    const rows = [
+      this.createTableRow('总采集数', `${stats.totalNews} 条`),
+      this.createTableRow('有效评分', `${stats.validNews} 条`),
+      this.createTableRow('过滤后数量', `${stats.filteredCount} 条`),
+      this.createTableRow('过滤率', `${stats.filterRate.toFixed(1)}%`),
+      this.createTableRow('平均评分', `${stats.averageScore.toFixed(2)} 分`),
+      this.createTableRow('最高评分', `${stats.highestScore.toFixed(2)} 分`),
+      this.createTableRow('执行耗时', `${stats.duration.toFixed(2)} 秒`),
+      this.createTableRow('Token 使用', stats.totalTokens.toLocaleString()),
+      this.createTableRow(
+        '缓存命中',
+        `${stats.cacheHitTokens.toLocaleString()} (${stats.cacheHitRate.toFixed(1)}%)`
+      ),
+      this.createTableRow('预估成本', `$${costEstimate.toFixed(4)}`)
+    ];
 
     return `## 📊 统计摘要
 
 | 指标 | 数值 |
 |------|------|
-| 总采集数 | ${stats.totalNews} 条 |
-| 有效评分 | ${stats.validNews} 条 |
-| 过滤后数量 | ${stats.filteredCount} 条 |
-| 过滤率 | ${stats.filterRate.toFixed(1)}% |
-| 平均评分 | ${stats.averageScore.toFixed(2)} 分 |
-| 最高评分 | ${stats.highestScore.toFixed(2)} 分 |
-| 执行耗时 | ${stats.duration.toFixed(2)} 秒 |
-| Token 使用 | ${stats.totalTokens.toLocaleString()} |
-| 缓存命中 | ${stats.cacheHitTokens.toLocaleString()} (${stats.cacheHitRate.toFixed(1)}%) |
-| 预估成本 | $${costEstimate.toFixed(4)} |`;
+${rows.join('\n')}`;
   }
 
   /**
-   * 构建新闻列表(按数据源分组)
+   * 构建新闻主体部分
    * @param {Array} filteredNews
    * @returns {string}
    */
-  buildNewsList(filteredNews) {
-    if (filteredNews.length === 0) {
+  buildNewsSection(filteredNews) {
+    if (!filteredNews || filteredNews.length === 0) {
       return `## 📰 过滤后的新闻
 
 *暂无符合过滤条件的新闻*`;
     }
 
-    // 按数据源分组
-    const groupedBySource = {};
-    filteredNews.forEach(item => {
-      const source = item.newsItem.source;
-      if (!groupedBySource[source]) {
-        groupedBySource[source] = [];
-      }
-      groupedBySource[source].push(item);
-    });
-
-    // 为每个数据源生成内容
-    const sections = [];
-    let globalIndex = 1;
-
-    for (const [source, items] of Object.entries(groupedBySource)) {
-      // 数据源标题
-      sections.push(`### 📡 ${source} (${items.length} 条)`);
-      sections.push('');
-
-      // 该数据源的新闻列表
-      const newsItems = items
-        .map(item => this.buildNewsItem(item, globalIndex++))
-        .join('\n\n---\n\n');
-
-      sections.push(newsItems);
-      sections.push('');
-    }
+    const grouped = this.groupBySource(filteredNews);
+    const sourceSections = Object.entries(grouped).map(
+      ([source, items]) => this.formatSourceSection(source, items)
+    );
 
     return `## 📰 过滤后的新闻 (按评分排序，按数据源分组)
 
-${sections.join('\n')}`;
+${sourceSections.join('\n\n')}`;
   }
 
   /**
-   * 构建单条新闻
-   * @param {Object} item
+   * 构建单个数据源的展示段落
+   * @param {string} source
+   * @param {Array} items
+   * @returns {string}
+   */
+  formatSourceSection(source, items) {
+    const content = items
+      .map((item, index) => this.formatNewsItem(item, index + 1))
+      .join('\n\n---\n\n');
+
+    return `### 📡 ${source} (${items.length} 条)\n\n${content}`;
+  }
+
+  /**
+   * 格式化单条新闻内容
+   * @param {Object} scoredItem
    * @param {number} index
    * @returns {string}
    */
-  buildNewsItem(item, index) {
-    const newsItem = item.newsItem;
-    const scoreEmoji = this.getScoreEmoji(item.score);
-
-    // 格式化发布时间
+  formatNewsItem(scoredItem, index) {
+    const { newsItem, score, reason } = scoredItem;
+    const scoreEmoji = this.getScoreEmoji(score);
     const publishTime = newsItem.createdAt.toLocaleString('zh-CN', {
       year: 'numeric',
       month: '2-digit',
@@ -172,42 +160,34 @@ ${sections.join('\n')}`;
       hour: '2-digit',
       minute: '2-digit'
     });
-
-    // 如果有元数据(知识星球),显示互动数据
-    let metadataSection = '';
-    if (newsItem.metadata && Object.keys(newsItem.metadata).length > 0) {
-      const meta = newsItem.metadata;
-      const metaParts = [];
-
-      if (meta.author) {
-        metaParts.push(`**作者**: ${meta.author}`);
-      }
-      if (meta.likes !== undefined) {
-        metaParts.push(`👍 ${meta.likes}`);
-      }
-      if (meta.comments !== undefined) {
-        metaParts.push(`💬 ${meta.comments}`);
-      }
-      if (meta.views !== undefined) {
-        metaParts.push(`👀 ${meta.views}`);
-      }
-
-      if (metaParts.length > 0) {
-        metadataSection = `\n**互动数据**: ${metaParts.join(' | ')}  `;
-      }
-    }
+    const metadata = this.formatMetadata(newsItem.metadata);
 
     return `#### ${index}. ${newsItem.title}
 
-**评分**: ${scoreEmoji} **${item.score.toFixed(1)}** / 10.0
-**发布时间**: ${publishTime}  ${metadataSection}
+**评分**: ${scoreEmoji} **${score.toFixed(1)}** / 10.0
+**发布时间**: ${publishTime}  ${metadata}
 **链接**: [查看原文](${newsItem.url})
 
 **摘要**:
 ${newsItem.summary}
 
 **评分理由**:
-${item.reason}`;
+${reason}`;
+  }
+
+  /**
+   * 格式化新闻的附加元数据
+   * @param {Object} metadata
+   * @returns {string}
+   */
+  formatMetadata(metadata = {}) {
+    const parts = [];
+    if (metadata.author) parts.push(`**作者**: ${metadata.author}`);
+    if (metadata.likes !== undefined) parts.push(`👍 ${metadata.likes}`);
+    if (metadata.comments !== undefined) parts.push(`💬 ${metadata.comments}`);
+    if (metadata.views !== undefined) parts.push(`👀 ${metadata.views}`);
+
+    return parts.length > 0 ? `\n**互动数据**: ${parts.join(' | ')}  ` : '';
   }
 
   /**
@@ -224,7 +204,7 @@ ${item.reason}`;
   }
 
   /**
-   * 构建文档尾部
+   * 文档结尾说明
    * @returns {string}
    */
   buildFooter() {
@@ -235,24 +215,58 @@ ${item.reason}`;
   }
 
   /**
-   * 估算 API 成本
+   * 估算 LLM 调用成本
    * @param {Object} stats
-   * @returns {number} 成本(美元)
+   * @returns {number}
    */
   estimateCost(stats) {
-    // DeepSeek API 定价 (2025年示例价格)
-    // Input: $0.27 / 1M tokens
-    // Output: $1.10 / 1M tokens
-    // Cache Hit: $0.027 / 1M tokens (10% of input)
-
     const inputTokens = stats.totalTokens - stats.cacheHitTokens;
-    const outputTokens = stats.totalTokens * 0.1; // 粗略估算输出占比
-    const cacheHitTokens = stats.cacheHitTokens;
+    const outputTokens = stats.totalTokens * 0.1; // 输出占比粗略估算
+    const cacheTokens = stats.cacheHitTokens;
 
-    const inputCost = (inputTokens / 1000000) * 0.27;
-    const outputCost = (outputTokens / 1000000) * 1.10;
-    const cacheCost = (cacheHitTokens / 1000000) * 0.027;
+    const inputCost = (inputTokens / 1_000_000) * 0.27;
+    const outputCost = (outputTokens / 1_000_000) * 1.10;
+    const cacheCost = (cacheTokens / 1_000_000) * 0.027;
 
     return inputCost + outputCost + cacheCost;
+  }
+
+  /**
+   * 将新闻按来源分组
+   * @param {Array} filteredNews
+   * @returns {Object<string, Array>}
+   */
+  groupBySource(filteredNews) {
+    return filteredNews.reduce((acc, item) => {
+      const source = item.newsItem.source;
+      if (!acc[source]) {
+        acc[source] = [];
+      }
+      acc[source].push(item);
+      return acc;
+    }, {});
+  }
+
+  /**
+   * 构建 Markdown 表格的一行
+   * @param {string} label
+   * @param {string} value
+   * @returns {string}
+   */
+  createTableRow(label, value) {
+    return `| ${label} | ${value} |`;
+  }
+
+  /**
+   * 解析输出路径并转为绝对路径
+   * @param {string} outputPath
+   * @returns {string}
+   */
+  resolveOutputPath(outputPath) {
+    const target = outputPath || this.defaultOutputPath;
+    // 若传入相对路径,确保基于项目根目录
+    return target.startsWith('/')
+      ? target
+      : resolve(process.cwd(), target);
   }
 }
