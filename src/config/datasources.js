@@ -143,9 +143,9 @@ export const WECHAT_MP_CONFIG = {
  */
 export function getEnabledDataSources() {
   const allSources = [
-    AIBASE_CONFIG,
     ZSXQ_CONFIG,
-    WECHAT_MP_CONFIG
+    WECHAT_MP_CONFIG,
+    AIBASE_CONFIG,
   ];
 
   const enabled = allSources.filter(source => source.enabled);
