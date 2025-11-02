@@ -19,6 +19,7 @@ export class WeChatMPCollector extends BaseCollector {
     this.accounts = config.config?.accounts || [];
     this.baseUrl = 'https://mp.weixin.qq.com';
     this.apiUrl = config.config?.apiUrl || `${this.baseUrl}/cgi-bin/appmsgpublish`;
+    this.recentDays = config.config?.recentDays ?? 7;
 
     this.rateLimit = config.config?.rateLimit || {
       minDelay: 3000,
@@ -133,7 +134,20 @@ export class WeChatMPCollector extends BaseCollector {
 
         const articles = this.parseResponse(response);
         const newsItems = this.convertToNewsItems(articles, account.nickname);
-        const { valid, invalid } = this.validateNewsItems(newsItems);
+        const { recentNews, outdatedNews } = this.filterRecentNewsItems(newsItems);
+
+        if (outdatedNews.length > 0) {
+          this.logger.info(
+            `${account.nickname}: 跳过 ${outdatedNews.length} 条超过 ${this.recentDays} 天的文章`
+          );
+        }
+
+        if (recentNews.length === 0) {
+          this.logger.warn(`${account.nickname}: 最近 ${this.recentDays} 天内没有文章,跳过`);
+          return [];
+        }
+
+        const { valid, invalid } = this.validateNewsItems(recentNews);
 
         if (invalid.length > 0) {
           this.logger.warn(`${account.nickname}: 过滤掉 ${invalid.length} 条无效文章`);
@@ -359,6 +373,38 @@ export class WeChatMPCollector extends BaseCollector {
       summary = summary.slice(0, 2000);
     }
     return summary;
+  }
+
+  /**
+   * 过滤出近 N 天的文章
+   * @param {NewsItem[]} newsItems
+   * @returns {{ recentNews: NewsItem[], outdatedNews: NewsItem[] }}
+   */
+  filterRecentNewsItems(newsItems) {
+    const cutoff = this.calculateRecentCutoff();
+    const recentNews = [];
+    const outdatedNews = [];
+
+    newsItems.forEach(item => {
+      // createdAt 已转为 Date,直接比较时间戳
+      if (item.createdAt >= cutoff) {
+        recentNews.push(item);
+      } else {
+        outdatedNews.push(item);
+      }
+    });
+
+    return { recentNews, outdatedNews };
+  }
+
+  /**
+   * 计算近 N 天的起始时间
+   * @returns {Date}
+   */
+  calculateRecentCutoff() {
+    const now = Date.now();
+    const delta = this.recentDays * 24 * 60 * 60 * 1000;
+    return new Date(now - delta);
   }
 
   /**

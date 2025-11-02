@@ -127,6 +127,8 @@ export const WECHAT_MP_CONFIG = {
     get accounts() {
       return loadWeChatAccounts();
     },
+    // 仅保留近 7 天的文章
+    recentDays: 7,
     rateLimit: {
       minDelay: 3000,
       maxDelay: 5000
