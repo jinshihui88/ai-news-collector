@@ -27,7 +27,7 @@ AI 新闻采集器 - 从 AIBase 等数据源自动采集最新 AI 相关新闻,�
 - **业务服务**: 自研 `LLMClient`, `Orchestrator`, `WeChatLoginService`
 - **工具库**: dotenv (环境变量), string-similarity (文本去重, 规划中), 自定义 `retryWithBackoff`
 - **日志**: 自定义彩色 Logger (`utils/logger.js`), 级别 DEBUG/INFO/WARN/ERROR/SUCCESS
-- **输出与存储**: Markdown 报告 (`output/filtered-news.md`), 本地 JSON 配置, `.wechat-token.json` 缓存登录态
+- **输出与存储**: Markdown 报告 (`output/filtered-news-YYYYMMDD-HHmmss.md`), 本地 JSON 配置, `.wechat-token.json` 缓存登录态
 - **测试框架**: Vitest (命令: `npm test`, `npm run test:unit|coverage|watch`)
 
 ## 配置与运行
@@ -51,7 +51,7 @@ AI 新闻采集器 - 从 AIBase 等数据源自动采集最新 AI 相关新闻,�
 - `npm test` / `npm run test:*`: 执行 Vitest 测试套件
 
 ### 输出与产物
-- Markdown 报告默认写入 `output/filtered-news.md`
+- Markdown 报告默认写入 `output/filtered-news-YYYYMMDD-HHmmss.md`
 - 运行日志仅输出在控制台,建议需要时重定向保存
 
 ## Project Conventions

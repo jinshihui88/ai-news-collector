@@ -154,7 +154,7 @@ npm start
 2. 加载微信 Token 配置(如已配置)
 3. 使用 LLM 对所有内容进行混合评分
 4. 过滤出高质量内容
-5. 生成 Markdown 报告到 \`output/filtered-news.md\`(按数据源分组展示)
+5. 生成带时间戳的 Markdown 报告(示例: \`output/filtered-news-20241102-203045.md\`)
 
 ## 项目结构
 
@@ -181,8 +181,7 @@ ai-news-collector/
 │   └── index.js         # CLI 入口
 ├── config/              # 配置文件
 │   └── filter-rules.json  # 过滤规则
-├── output/              # 输出目录
-│   └── filtered-news.md   # 生成的报告
+├── output/              # 输出目录(自动保存带时间戳的 Markdown 报告)
 ├── .env.example         # 环境变量示例
 └── package.json
 \`\`\`
@@ -326,4 +325,3 @@ MIT
 ## 支持
 
 如有问题,请在 GitHub Issues 提交反馈。
-

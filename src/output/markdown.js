@@ -1,5 +1,11 @@
 import { writeFileSync } from 'fs';
-import { resolve } from 'path';
+import {
+  resolve,
+  dirname,
+  extname,
+  basename,
+  isAbsolute
+} from 'path';
 import { createLogger } from '../utils/logger.js';
 import { ensureDirectorySync } from '../utils/fs.js';
 
@@ -11,6 +17,7 @@ const logger = createLogger('Markdown');
  */
 export class MarkdownGenerator {
   constructor(options = {}) {
+    // 默认输出路径支持传入文件或目录
     this.defaultOutputPath = options.outputPath || 'output/filtered-news.md';
   }
 
@@ -264,8 +271,59 @@ ${reason}`;
    */
   resolveOutputPath(outputPath) {
     const target = outputPath || this.defaultOutputPath;
-    // 若传入相对路径,确保基于项目根目录
-    return target.startsWith('/')
+    const absoluteTarget = this.normalizeToAbsolute(target);
+    const extension = extname(absoluteTarget);
+
+    if (!extension) {
+      // 当目标是目录时,使用默认文件名前缀生成时间戳文件
+      return resolve(absoluteTarget, this.buildTimestampedFilename('filtered-news', '.md'));
+    }
+
+    const directory = dirname(absoluteTarget);
+    const baseName = basename(absoluteTarget, extension);
+    return resolve(directory, this.buildTimestampedFilename(baseName, extension));
+  }
+
+  /**
+   * 构建带时间戳的文件名
+   * @param {string} baseName
+   * @param {string} extension
+   * @returns {string}
+   */
+  buildTimestampedFilename(baseName, extension) {
+    return `${baseName}-${this.buildTimestamp()}${extension}`;
+  }
+
+  /**
+   * 生成文件名使用的时间戳
+   * @returns {string}
+   */
+  buildTimestamp() {
+    const now = new Date();
+    const pad = number => String(number).padStart(2, '0');
+
+    const datePart = [
+      now.getFullYear(),
+      pad(now.getMonth() + 1),
+      pad(now.getDate())
+    ].join('');
+
+    const timePart = [
+      pad(now.getHours()),
+      pad(now.getMinutes()),
+      pad(now.getSeconds())
+    ].join('');
+
+    return `${datePart}-${timePart}`;
+  }
+
+  /**
+   * 将路径转换为绝对路径
+   * @param {string} target
+   * @returns {string}
+   */
+  normalizeToAbsolute(target) {
+    return isAbsolute(target)
       ? target
       : resolve(process.cwd(), target);
   }

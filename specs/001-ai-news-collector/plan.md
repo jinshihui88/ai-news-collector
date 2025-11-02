@@ -158,7 +158,7 @@ tests/
     └── e2e.test.js
 
 output/                # 输出目录
-└── filtered-news.md   # 过滤后的新闻输出
+└── filtered-news-YYYYMMDD-HHmmss.md   # 过滤后的新闻输出
 ```
 
 **Structure Decision**:

@@ -90,7 +90,7 @@
 2. 运行 `node src/index.js`
 3. 验证从 AIBase 采集到 10 条新闻
 4. 验证 LLM 对新闻进行评分
-5. 验证生成 output/filtered-news.md 文件
+5. 验证生成 output/filtered-news-YYYYMMDD-HHmmss.md 文件
 6. 打开 Markdown 文件,验证包含标题、摘要、评分理由
 
 ### Acceptance Scenario 1: 从 AIBase 采集新闻
@@ -139,7 +139,7 @@
 - [X] T042 [US2] 生成文档头部(采集时间、总数、过滤后数量、过滤率)
 - [X] T043 [US2] 按评分从高到低遍历新闻,生成 Markdown 章节
 - [X] T044 [US2] 每条新闻包含标题、来源、链接、发布时间、评分、摘要、评分理由
-- [X] T045 [US2] 将 Markdown 内容写入 output/filtered-news.md 文件
+- [X] T045 [US2] 将 Markdown 内容写入 output/filtered-news-YYYYMMDD-HHmmss.md 文件
 - [X] T046 [US2] 文件写入成功后,输出文件路径到控制台
 
 #### CLI 入口
@@ -298,7 +298,7 @@ Group C: T041-T046 (Markdown 生成器)
 
 ### 3. 调试技巧
 - 使用 console.log 输出中间结果
-- 检查 output/filtered-news.md 文件内容
+- 检查 output/filtered-news-*.md 文件内容
 - 查看 LLM API 响应中的 token 使用量
 - 观察 DeepSeek API 调用是否触发 prompt caching
 

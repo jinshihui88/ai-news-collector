@@ -319,7 +319,7 @@
    FilterResult[] → ThresholdFilter → FilterResult[] (top 10-30%)
 
 6. 输出阶段
-   NewsItem[] + FilterResult[] → MarkdownGenerator → output/filtered-news.md
+   NewsItem[] + FilterResult[] → MarkdownGenerator → output/filtered-news-YYYYMMDD-HHmmss.md
 ```
 
 ---

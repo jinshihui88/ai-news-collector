@@ -304,7 +304,7 @@ Threshold: 7.5
 Score range: 9.2 - 3.5
 
 [Output]
-✓ Generated: output/filtered-news.md
+✓ Generated: output/filtered-news-20251101-110345.md
 
 [Execution Summary]
 Start time: 2025-11-01 11:00:00
@@ -321,7 +321,7 @@ Cost estimate: $0.08
 
 过滤后的新闻保存在:
 ```
-output/filtered-news.md
+output/filtered-news-YYYYMMDD-HHmmss.md
 ```
 
 ### 输出格式示例
@@ -376,7 +376,7 @@ OpenAI 最新发布的 GPT-5 模型在多项基准测试中超越前代,特别�
 - **VS Code**: 内置 Markdown 预览(快捷键: `Cmd/Ctrl + Shift + V`)
 - **Typora**: 优秀的 Markdown 编辑器
 - **浏览器插件**: Markdown Viewer (Chrome/Firefox)
-- **命令行**: `cat output/filtered-news.md` 或 `less output/filtered-news.md`
+- **命令行**: `ls output/filtered-news-*.md` 查找最新文件,再用 `cat`/`less` 查看
 
 ---
 
