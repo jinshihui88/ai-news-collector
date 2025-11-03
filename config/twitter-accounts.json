@@ -1,0 +1,13 @@
+{
+  "config": {
+    "sinceHours": 168,
+    "maxResultsPerPage": 100,
+    "defaultLanguages": ["en", "zh"],
+    "defaultQuerySuffix": "-is:retweet"
+  },
+  "keywords": [],
+  "accounts": [{
+    "handle": "AnthropicAI",
+    "displayName": "Anthropic"
+  }]
+}
