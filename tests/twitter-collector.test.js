@@ -43,6 +43,8 @@ describe('TwitterCollector helpers', () => {
     expect(plans[0].query).toContain('from:AnthropicAI -is:retweet');
     expect(plans[0].query).toContain('lang:en');
     expect(plans[1].query).toContain('lang:zh');
+    expect(plans[0].limit).toBe(10);
+    expect(plans[1].limit).toBe(10);
   });
 
   it('createSearchPlans 在没有推主时使用关键词回退', () => {
@@ -64,5 +66,6 @@ describe('TwitterCollector helpers', () => {
     expect(plans).toHaveLength(1);
     expect(plans[0].query).toContain('AI');
     expect(plans[0].query).toContain('人工智能');
+    expect(plans[0].limit).toBe(10);
   });
 });

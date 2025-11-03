@@ -3,7 +3,9 @@
     "sinceHours": 168,
     "maxResultsPerPage": 100,
     "defaultLanguages": ["en", "zh"],
-    "defaultQuerySuffix": "-is:retweet"
+    "defaultQuerySuffix": "-is:retweet",
+    "maxItemsPerAccount": 10,
+    "maxItemsPerKeyword": 10
   },
   "keywords": [],
   "accounts": [{

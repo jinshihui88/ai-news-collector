@@ -328,6 +328,22 @@ export function validateTwitterAccounts(config) {
           typeof globalConfig.defaultQuerySuffix !== 'string') {
         errors.push('config.defaultQuerySuffix 必须是字符串');
       }
+
+      if (globalConfig.maxItemsPerAccount !== undefined) {
+        if (typeof globalConfig.maxItemsPerAccount !== 'number' ||
+            globalConfig.maxItemsPerAccount < 1 ||
+            globalConfig.maxItemsPerAccount > 200) {
+          errors.push('config.maxItemsPerAccount 必须是 1-200 之间的数字');
+        }
+      }
+
+      if (globalConfig.maxItemsPerKeyword !== undefined) {
+        if (typeof globalConfig.maxItemsPerKeyword !== 'number' ||
+            globalConfig.maxItemsPerKeyword < 1 ||
+            globalConfig.maxItemsPerKeyword > 200) {
+          errors.push('config.maxItemsPerKeyword 必须是 1-200 之间的数字');
+        }
+      }
     }
   }
 

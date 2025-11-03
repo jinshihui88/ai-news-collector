@@ -12,6 +12,8 @@ const MAX_RESULTS_PER_PAGE = 100;
 const DEFAULT_SINCE_HOURS = 168;
 const DEFAULT_QUERY_SUFFIX = '-is:retweet';
 const DEFAULT_FALLBACK_QUERIES = ['AI', 'Artificial Intelligence', '大模型', 'AIGC'];
+const DEFAULT_MAX_ITEMS_PER_ACCOUNT = 10;
+const MAX_ITEMS_PER_PLAN = 200;
 const DEFAULT_TWEET_FIELDS = [
   'created_at',
   'lang',
@@ -112,10 +114,28 @@ export class TwitterCollector extends BaseCollector {
       ? keywords
       : DEFAULT_FALLBACK_QUERIES;
 
+    const maxItemsPerAccount = clamp(
+      typeof config.maxItemsPerAccount === 'number'
+        ? config.maxItemsPerAccount
+        : DEFAULT_MAX_ITEMS_PER_ACCOUNT,
+      1,
+      MAX_ITEMS_PER_PLAN
+    );
+
+    const maxItemsPerKeyword = clamp(
+      typeof config.maxItemsPerKeyword === 'number'
+        ? config.maxItemsPerKeyword
+        : maxItemsPerAccount,
+      1,
+      MAX_ITEMS_PER_PLAN
+    );
+
     const searchPlans = this.createSearchPlans(enabledAccounts, {
       defaultSuffix,
       defaultLanguages,
-      fallbackQueries
+      fallbackQueries,
+      accountLimit: maxItemsPerAccount,
+      keywordLimit: maxItemsPerKeyword
     });
 
     if (searchPlans.length === 0) {
@@ -127,14 +147,45 @@ export class TwitterCollector extends BaseCollector {
     const startTime = new Date(Date.now() - sinceHours * MILLISECONDS_PER_HOUR).toISOString();
     const collectedItems = [];
     this.seenTweetIds.clear();
+    const accountCounters = new Map();
+
+    const planQuotaSum = searchPlans.reduce(
+      (sum, plan) => sum + (typeof plan.limit === 'number' ? plan.limit : maxItemsPerAccount),
+      0
+    );
+    const baseTotalLimit = typeof this.config.maxItems === 'number' && this.config.maxItems > 0
+      ? this.config.maxItems
+      : Infinity;
+    const totalLimit = Number.isFinite(baseTotalLimit)
+      ? Math.max(baseTotalLimit, planQuotaSum)
+      : planQuotaSum;
 
     for (const plan of searchPlans) {
-      if (collectedItems.length >= this.config.maxItems) {
+      if (collectedItems.length >= totalLimit) {
         break;
       }
 
       try {
-        const remaining = this.config.maxItems - collectedItems.length;
+        const planLimit = typeof plan.limit === 'number'
+          ? plan.limit
+          : (plan.type === 'account' ? maxItemsPerAccount : maxItemsPerKeyword);
+        const accountKey = plan.type === 'account'
+          ? `account:${plan.handle}`
+          : `keyword:${plan.label}`;
+        const used = accountCounters.get(accountKey) || 0;
+        const remainingForAccount = planLimit - used;
+
+        if (remainingForAccount <= 0) {
+          this.logger.debug(`查询 "${plan.label}" 已达到账号配额,跳过`);
+          continue;
+        }
+
+        const globalRemaining = totalLimit - collectedItems.length;
+        const remaining = Math.min(remainingForAccount, globalRemaining);
+        if (remaining <= 0) {
+          continue;
+        }
+
         const items = await this.fetchTweetsForPlan({
           plan,
           collector,
@@ -142,10 +193,13 @@ export class TwitterCollector extends BaseCollector {
           userId,
           startTime,
           maxResultsPerPage,
-          remaining
+          limit: remaining
         });
 
         collectedItems.push(...items);
+        if (items.length > 0) {
+          accountCounters.set(accountKey, used + items.length);
+        }
       } catch (error) {
         this.logger.error(`查询 "${plan.label}" 失败: ${error.message}`);
       }
@@ -169,6 +223,14 @@ export class TwitterCollector extends BaseCollector {
   createSearchPlans(accounts, defaults) {
     const plans = [];
 
+    const accountLimit = typeof defaults.accountLimit === 'number'
+      ? clamp(defaults.accountLimit, 1, MAX_ITEMS_PER_PLAN)
+      : DEFAULT_MAX_ITEMS_PER_ACCOUNT;
+
+    const keywordLimit = typeof defaults.keywordLimit === 'number'
+      ? clamp(defaults.keywordLimit, 1, MAX_ITEMS_PER_PLAN)
+      : accountLimit;
+
     accounts.forEach(account => {
       const handle = (account.handle || '').replace(/^@/, '').trim();
       if (!handle) return;
@@ -190,7 +252,8 @@ export class TwitterCollector extends BaseCollector {
           handle,
           language,
           tags: Array.isArray(account.tags) ? account.tags : [],
-          query: appendLanguage(baseQuery, language)
+          query: appendLanguage(baseQuery, language),
+          limit: accountLimit
         });
       });
     });
@@ -211,7 +274,8 @@ export class TwitterCollector extends BaseCollector {
           handle: '',
           language,
           tags: [],
-          query: appendLanguage(`(${combined}) ${defaults.defaultSuffix}`.trim(), language)
+          query: appendLanguage(`(${combined}) ${defaults.defaultSuffix}`.trim(), language),
+          limit: keywordLimit
         });
       });
     }
@@ -231,17 +295,24 @@ export class TwitterCollector extends BaseCollector {
     userId,
     startTime,
     maxResultsPerPage,
-    remaining
+    limit
   }) {
     const items = [];
     let nextToken;
 
     this.logger.info(`执行 Twitter 查询: ${plan.query}`);
 
-    while (items.length < remaining) {
+    while (items.length < limit) {
+      const remainingCapacity = limit - items.length;
+      if (remainingCapacity <= 0) {
+        break;
+      }
+
+      const perPageLimit = Math.min(maxResultsPerPage, Math.max(remainingCapacity, MIN_RESULTS_PER_PAGE));
+
       const searchParams = {
         query: plan.query,
-        max_results: clamp(maxResultsPerPage, MIN_RESULTS_PER_PAGE, MAX_RESULTS_PER_PAGE),
+        max_results: clamp(perPageLimit, MIN_RESULTS_PER_PAGE, MAX_RESULTS_PER_PAGE),
         start_time: startTime,
         tweet_fields: DEFAULT_TWEET_FIELDS,
         user_fields: DEFAULT_USER_FIELDS,
@@ -269,7 +340,7 @@ export class TwitterCollector extends BaseCollector {
 
       const userMap = buildUserMap(response.includes?.users || []);
       tweets.forEach(tweet => {
-        if (items.length >= remaining) {
+        if (items.length >= limit) {
           return;
         }
 
@@ -287,6 +358,10 @@ export class TwitterCollector extends BaseCollector {
           items.push(newsItem);
         }
       });
+
+      if (items.length >= limit) {
+        break;
+      }
 
       const meta = response.meta || {};
       if (!meta.next_token) {
