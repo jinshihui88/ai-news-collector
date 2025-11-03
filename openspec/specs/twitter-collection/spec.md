@@ -4,35 +4,16 @@
 TBD - created by archiving change add-twitter-collector. Update Purpose after archive.
 ## Requirements
 ### Requirement: Twitter 数据源采集
-系统必须(SHALL)能够通过 Composio 提供的 Twitter 工具执行检索,并返回符合 `NewsItem` 模型的数据。
-
-#### Scenario: 按配置关键词成功采集
-- **GIVEN** `.env` 中配置了有效的 `COMPOSIO_API_KEY`、`COMPOSIO_CONNECTION_ID` 与 `COMPOSIO_USER_ID`
-- **AND** `config/twitter-accounts.json` 中至少存在一个启用的推主或默认查询配置
-- **WHEN** TwitterCollector 执行 `collect()`
-- **THEN** 系统应通过 Composio `twitter` 工具调用 `TWITTER_RECENT_SEARCH`
-- **AND** 请求体需携带 `connectedAccountId` 与 `userId`,两者指向同一 connected account
-- **AND** 获取不超过 `maxItems` 条记录(默认 50)
-- **AND** 每条记录转换为包含 `title`, `summary`, `url`, `createdAt`, `source` 的 `NewsItem`
-
+系统必须(SHALL)能够通过 Composio Twitter 工具检索并返回符合 NewsItem 结构的推文数据。
 #### Scenario: 按关注推主采集近 7 天内容
-- **GIVEN** `config/twitter-accounts.json` 配置了至少一个推主(包含 `handle`)
-- **AND** TwitterCollector 配置 `sinceHours=168`
-- **WHEN** 执行采集流程
-- **THEN** 系统应为每个推主构造 `from:<handle> -is:retweet` 查询并调用 `TWITTER_RECENT_SEARCH`
-- **AND** 仅保留 `created_at` 在当前时间前 168 小时内的推文
-- **AND** 输出结果仍遵循 `NewsItem` 结构
-
-#### Scenario: 查询参数下限控制
-- **WHEN** 采集器发起 `TWITTER_RECENT_SEARCH` 请求
-- **THEN** `max_results` 字段必须落在 [10, 100] 区间
-- **AND** 当配置请求少于 10 条时应回退至 10
-
-#### Scenario: 多页抓取
-- **GIVEN** 查询结果超过单页上限 100 条
-- **WHEN** Composio 响应包含 `meta.next_token`
-- **THEN** 采集器必须使用下一页令牌继续抓取,直至达到 `maxItems` 或没有更多数据
-- **AND** 采集器必须记录分页进度日志
+- **GIVEN** `config/collection-window.json` 定义了 `recentDays`
+- **AND** `config/twitter-accounts.json` 配置了至少一个推主(包含 `handle`)
+- **WHEN** TwitterCollector 执行采集流程
+- **THEN** 应根据全局 `recentDays` 计算查询的 `start_time`
+- **AND** 为每个推主构造 `from:<handle>` 查询并追加默认或配置的后缀(如 `-is:retweet`)
+- **AND** 仅保留 `created_at` 落在最近 `recentDays` 天窗口内的推文
+- **AND** 输出结果应继续遵循 `NewsItem` 结构
+- **AND** 当全局配置缺失或无效时,应回退至默认 7 天并记录提示日志
 
 ### Requirement: Twitter 认证与配置管理
 系统必须(SHALL)通过集中配置管理 Composio 认证信息与 Twitter 查询参数,并在缺失配置时安全降级。

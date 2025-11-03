@@ -80,38 +80,17 @@ TBD - created by archiving change add-wechat-collector. Update Purpose after arc
 - **AND** 触发二维码登录流程
 
 ### Requirement: 微信公众号文章列表采集
-系统必须(SHALL)支持通过公众号后台接口采集指定微信公众号的文章列表。
-
+系统必须(SHALL)通过公众号后台接口采集文章并返回符合 NewsItem 结构的数据。
 #### Scenario: 成功采集指定公众号的文章列表
 - **GIVEN** 用户已配置有效的 `token`(公众号后台 token)和 `fakeid`(公众号 ID)
+- **AND** 全局时间窗口配置提供 `recentDays`
 - **WHEN** 执行采集任务
 - **THEN** 系统应成功调用 `/cgi-bin/appmsgpublish` 接口
 - **AND** 应正确解析多层嵌套的 JSON 响应
 - **AND** 每篇文章应包含标题、摘要、文章 URL、发布时间
 - **AND** 默认获取最新 10-20 篇文章
-
-#### Scenario: 多层 JSON 解析
-- **GIVEN** 微信接口返回的响应包含嵌套 JSON 字符串
-- **WHEN** 解析响应数据
-- **THEN** 应先解析顶层 `publish_page` 字段(JSON 字符串)
-- **AND** 再从 `publish_list` 数组中提取每个 `publish_info` 字段(又是 JSON 字符串)
-- **AND** 最后从 `publish_info` 中提取 `appmsgex` 数组(文章列表)
-- **AND** 应处理任何解析异常,记录详细错误信息
-
-#### Scenario: Token 过期或失效时的处理
-- **GIVEN** 配置的 `token` 参数已过期或失效
-- **WHEN** 尝试采集文章
-- **THEN** 系统应捕获认证错误(ret !== 0 或 ret === 200003)
-- **AND** 记录清晰的错误日志:"Token 已过期,请重新登录公众号后台获取"
-- **AND** 跳过该数据源的采集
-- **AND** 不影响其他数据源的正常工作
-
-#### Scenario: Fakeid 无效或公众号不存在
-- **GIVEN** 配置的 `fakeid` 对应的公众号不存在或已注销
-- **WHEN** 尝试采集文章
-- **THEN** 系统应检测到空列表响应
-- **AND** 记录警告日志:"公众号 [名称] 未返回文章,请检查 fakeid 是否正确"
-- **AND** 返回空列表,不中断程序执行
+- **AND** 仅保留最近 `recentDays` 天内的文章,超出范围的文章应记录调试日志并跳过
+- **AND** 若全局配置缺失或无效,应回退至默认 7 天
 
 ### Requirement: 微信文章内容结构化
 系统必须(SHALL)将微信公众号的文章数据转换为统一的 NewsItem 数据模型。

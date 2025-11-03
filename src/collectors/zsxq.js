@@ -3,6 +3,7 @@ import * as cheerio from 'cheerio';
 import { BaseCollector } from './base.js';
 import { NewsItem } from '../models/news-item.js';
 import { ZSXQ_CONFIG } from '../config/datasources.js';
+import { partitionByGlobalRecency } from '../utils/recency.js';
 
 // 常量定义
 const CONTENT_LIMITS = {
@@ -106,8 +107,14 @@ export class ZSXQCollector extends BaseCollector {
       }
 
       const duration = ((Date.now() - startTime) / 1000).toFixed(2);
-      this.logger.success(`知识星球采集完成,获取 ${allNewsItems.length} 条内容 (去重后) (耗时: ${duration}s)`);
-      return allNewsItems;
+      const { recent, outdated, recentDays } = partitionByGlobalRecency(allNewsItems);
+
+      if (outdated.length > 0) {
+        this.logger.info(`知识星球: 过滤 ${outdated.length} 条超过 ${recentDays} 天的帖子`);
+      }
+
+      this.logger.success(`知识星球采集完成,获取 ${recent.length} 条内容 (去重后) (耗时: ${duration}s)`);
+      return recent;
 
     } catch (error) {
       this.logger.error('知识星球采集失败:', error.message);

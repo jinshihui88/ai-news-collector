@@ -5,6 +5,7 @@ import { NewsItem } from '../models/news-item.js';
 import { AIBASE_CONFIG } from '../config/datasources.js';
 import { AIBASE_SELECTORS, SelectorUtils } from './selectors.js';
 import { COLLECTOR_CONSTANTS } from '../config/constants.js';
+import { partitionByGlobalRecency } from '../utils/recency.js';
 
 /**
  * AIBase 采集器
@@ -28,9 +29,7 @@ export class AIBaseCollector extends BaseCollector {
       try {
         this.logger.debug('尝试使用 Cheerio 方式抓取...');
         const newsItems = await this.scrapeWithCheerio();
-        const duration = ((Date.now() - startTime) / 1000).toFixed(2);
-        this.logger.success(`采集完成,获取 ${newsItems.length} 条新闻 (耗时: ${duration}s)`);
-        return newsItems;
+        return this.finalizeNewsItems(newsItems, startTime, '采集完成');
       } catch (cheerioError) {
         this.logger.warn('Cheerio 方式失败,尝试使用 Puppeteer 降级方案...');
         this.logger.debug('Cheerio 错误详情:', cheerioError.message);
@@ -38,9 +37,7 @@ export class AIBaseCollector extends BaseCollector {
         // 降级到 Puppeteer
         try {
           const newsItems = await this.scrapeWithPuppeteer();
-          const duration = ((Date.now() - startTime) / 1000).toFixed(2);
-          this.logger.success(`采集完成(Puppeteer),获取 ${newsItems.length} 条新闻 (耗时: ${duration}s)`);
-          return newsItems;
+          return this.finalizeNewsItems(newsItems, startTime, '采集完成(Puppeteer)');
         } catch (puppeteerError) {
           this.logger.error('Puppeteer 方式也失败:', puppeteerError.message);
           return [];
@@ -164,6 +161,25 @@ export class AIBaseCollector extends BaseCollector {
     }
 
     return newsItems;
+  }
+
+  /**
+   * 根据全局配置过滤超期新闻,并输出统一的统计日志
+   * @param {NewsItem[]} newsItems
+   * @param {number} startTimestamp
+   * @param {string} label
+   * @returns {NewsItem[]}
+   */
+  finalizeNewsItems(newsItems, startTimestamp, label) {
+    const { recent, outdated, recentDays } = partitionByGlobalRecency(newsItems);
+
+    if (outdated.length > 0) {
+      this.logger.info(`过滤 ${outdated.length} 条超过 ${recentDays} 天的新闻`);
+    }
+
+    const duration = ((Date.now() - startTimestamp) / 1000).toFixed(2);
+    this.logger.success(`${label},获取 ${recent.length} 条新闻 (耗时: ${duration}s)`);
+    return recent;
   }
 
   /**

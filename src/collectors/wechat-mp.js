@@ -4,6 +4,8 @@ import { NewsItem } from '../models/news-item.js';
 import WeChatLoginService from '../services/wechat-login.js';
 import TokenStore from '../storage/token-store.js';
 import { delay, getRandomDelay } from '../utils/helpers.js';
+import { getRecentDays } from '../config/collection-window.js';
+import { partitionByGlobalRecency } from '../utils/recency.js';
 
 /**
  * 微信公众号 MP 采集器
@@ -19,7 +21,7 @@ export class WeChatMPCollector extends BaseCollector {
     this.accounts = config.config?.accounts || [];
     this.baseUrl = 'https://mp.weixin.qq.com';
     this.apiUrl = config.config?.apiUrl || `${this.baseUrl}/cgi-bin/appmsgpublish`;
-    this.recentDays = config.config?.recentDays ?? 7;
+    this.recentDays = getRecentDays();
 
     this.rateLimit = config.config?.rateLimit || {
       minDelay: 3000,
@@ -37,6 +39,7 @@ export class WeChatMPCollector extends BaseCollector {
   async collect() {
     this.logger.info('开始采集微信公众号文章...');
     const startTime = Date.now();
+    this.recentDays = getRecentDays();
 
     try {
       await this.ensureAuthenticated();
@@ -381,30 +384,12 @@ export class WeChatMPCollector extends BaseCollector {
    * @returns {{ recentNews: NewsItem[], outdatedNews: NewsItem[] }}
    */
   filterRecentNewsItems(newsItems) {
-    const cutoff = this.calculateRecentCutoff();
-    const recentNews = [];
-    const outdatedNews = [];
-
-    newsItems.forEach(item => {
-      // createdAt 已转为 Date,直接比较时间戳
-      if (item.createdAt >= cutoff) {
-        recentNews.push(item);
-      } else {
-        outdatedNews.push(item);
-      }
-    });
-
-    return { recentNews, outdatedNews };
-  }
-
-  /**
-   * 计算近 N 天的起始时间
-   * @returns {Date}
-   */
-  calculateRecentCutoff() {
-    const now = Date.now();
-    const delta = this.recentDays * 24 * 60 * 60 * 1000;
-    return new Date(now - delta);
+    const { recent, outdated, recentDays } = partitionByGlobalRecency(newsItems);
+    this.recentDays = recentDays;
+    return {
+      recentNews: recent,
+      outdatedNews: outdated
+    };
   }
 
   /**

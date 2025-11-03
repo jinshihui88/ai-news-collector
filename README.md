@@ -7,13 +7,14 @@
 - ✅ **多数据源采集**: 支持 AIBase、知识星球、微信公众号和 Twitter,可按需扩展更多来源
 - ✅ **智能采集**: 自动抓取最新 AI 新闻和社群讨论
 - ✅ **微信公众号采集**: 通过二维码扫码登录,零配置采集公众号文章
-- 🆕 **Twitter 采集**: 基于 Composio 一键接入,支持关注推主与关键词搜索
+- ✅ **Twitter 采集**: 基于 Composio 一键接入,支持关注推主与关键词搜索
 - ✅ **LLM 评分**: 使用 DeepSeek API 根据用户偏好对内容进行智能评分
 - ✅ **动态过滤**: 自动保留得分最高的 10-30% 内容
 - ✅ **配置化**: 通过 JSON 配置文件设置正反面样例
 - ✅ **低成本**: 使用 DeepSeek API,每次运行约 $0.01-0.02
 - ✅ **完整日志**: 彩色日志输出,清晰展示采集和过滤进度
 - ✅ **按源分组**: Markdown 报告按数据源分组展示
+- 🆕 **统一时间窗口**: `config/collection-window.json` 一次性控制所有数据源的采集天数
 
 ## 快速开始
 
@@ -254,9 +255,15 @@ ai-news-collector/
 - `config/twitter-accounts.json` 控制推主和关键词,默认每个推主/关键词最多保留 10 条
 - 可通过 `maxItemsPerAccount`/`maxItemsPerKeyword` 自定义配额,全局总量会自动扩容
 - 未配置推主时会回退到 `keywords` 列表执行搜索
+- 时间窗口由 `config/collection-window.json` 控制,`twitter-accounts.json` 中的 `sinceHours` 字段仅保留向后兼容
+
+### 全局采集时间窗口
+
+- 所有数据源共用 `config/collection-window.json` 中的 `recentDays` 值,默认 7 天
+- 修改该文件即可统一调整采集范围,无需分别修改各个数据源配置
+- 如果配置缺失或数值无效,程序会回退到默认的 7 天并在日志中提示
 
 ### 过滤规则配置
-
 每个数据源都有独立的过滤规则文件(位于 `config/filter-rules-*.json`):
 
 - **positiveExamples**: 正面样例(至少 1 个),表示你想看到的新闻类型

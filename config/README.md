@@ -60,6 +60,28 @@ LLM 智能过滤规则配置(按数据源分类)。
 
 ---
 
+### collection-window.json
+全局采集时间窗口配置。
+
+**用途**: 统一控制所有数据源仅保留最近 N 天的内容。
+
+**配置示例**:
+```json
+{
+  "recentDays": 7
+}
+```
+
+**字段说明**:
+
+| 字段 | 必需 | 说明 |
+|------|------|------|
+| `recentDays` | ✅ 是 | 采集最近多少天的内容,必须是大于 0 的整数(建议 1-30) |
+
+> 提示: 如果缺少该文件或配置无效,程序会自动回退到默认的 7 天,并在日志中给出提示。
+
+---
+
 ### wechat-accounts.json
 微信公众号配置文件。
 
@@ -229,7 +251,7 @@ Twitter 推主及搜索配置文件。
 
 | 字段 | 必需 | 说明 |
 |------|------|------|
-| `config.sinceHours` | ❌ 否 | 拉取最近多少小时推文,默认 168 小时 |
+| `config.sinceHours` | ❌ 否 | 向后兼容字段,已由 `collection-window.json` 决定时间窗口 |
 | `config.maxResultsPerPage` | ❌ 否 | 单次请求的 `max_results`,范围 10-100,默认 100 |
 | `config.defaultLanguages` | ❌ 否 | 默认语言过滤,对应 Twitter `lang:` 语法 |
 | `config.defaultQuerySuffix` | ❌ 否 | 自动拼接在 `from:<handle>` 后的查询片段 |

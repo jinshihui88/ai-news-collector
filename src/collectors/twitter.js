@@ -2,6 +2,8 @@ import { Composio } from '@composio/core';
 import { BaseCollector } from './base.js';
 import { NewsItem } from '../models/news-item.js';
 import { TWITTER_CONFIG } from '../config/datasources.js';
+import { getRecentCutoff, getRecentDays } from '../config/collection-window.js';
+import { partitionByGlobalRecency } from '../utils/recency.js';
 
 /**
  * 常量定义
@@ -90,6 +92,20 @@ export class TwitterCollector extends BaseCollector {
       }
     }
 
+    const recentDays = getRecentDays();
+    const cutoffDate = getRecentCutoff();
+    const cutoffMs = cutoffDate.getTime();
+    const rawSinceHours = recentDays * 24;
+    const sinceHours = clamp(rawSinceHours, 1, DEFAULT_SINCE_HOURS);
+
+    if (typeof config.sinceHours === 'number' && config.sinceHours !== sinceHours) {
+      this.logger.debug('Twitter 配置中的 sinceHours 已由全局 recentDays 接管');
+    }
+
+    if (rawSinceHours > DEFAULT_SINCE_HOURS) {
+      this.logger.warn('Twitter 接口最多支持最近 7 天,已按 7 天窗口发起查询');
+    }
+
     const defaultSuffix = typeof config.defaultQuerySuffix === 'string'
       ? config.defaultQuerySuffix.trim()
       : DEFAULT_QUERY_SUFFIX;
@@ -97,12 +113,6 @@ export class TwitterCollector extends BaseCollector {
     const defaultLanguages = Array.isArray(config.defaultLanguages)
       ? config.defaultLanguages.filter(Boolean)
       : [];
-
-    const sinceHours = clamp(
-      typeof config.sinceHours === 'number' ? config.sinceHours : DEFAULT_SINCE_HOURS,
-      1,
-      DEFAULT_SINCE_HOURS
-    );
 
     const maxResultsPerPage = clamp(
       typeof config.maxResultsPerPage === 'number' ? config.maxResultsPerPage : MAX_RESULTS_PER_PAGE,
@@ -193,7 +203,9 @@ export class TwitterCollector extends BaseCollector {
           userId,
           startTime,
           maxResultsPerPage,
-          limit: remaining
+          limit: remaining,
+          cutoffMs,
+          recentDays
         });
 
         collectedItems.push(...items);
@@ -205,7 +217,12 @@ export class TwitterCollector extends BaseCollector {
       }
     }
 
-    const validation = this.validateNewsItems(collectedItems);
+    const { recent, outdated, recentDays: twitterRecentDays } = partitionByGlobalRecency(collectedItems);
+    if (outdated.length > 0) {
+      this.logger.info(`Twitter: 过滤 ${outdated.length} 条超过 ${twitterRecentDays} 天的推文`);
+    }
+
+    const validation = this.validateNewsItems(recent);
     if (validation.invalid.length > 0) {
       this.logger.warn(`Twitter 返回 ${validation.invalid.length} 条无效数据,已自动过滤`);
     }
@@ -295,7 +312,9 @@ export class TwitterCollector extends BaseCollector {
     userId,
     startTime,
     maxResultsPerPage,
-    limit
+    limit,
+    cutoffMs,
+    recentDays
   }) {
     const items = [];
     let nextToken;
@@ -345,6 +364,14 @@ export class TwitterCollector extends BaseCollector {
         }
 
         if (this.seenTweetIds.has(tweet.id)) {
+          return;
+        }
+
+        const createdAtMs = new Date(tweet.created_at).getTime();
+        if (Number.isFinite(cutoffMs) &&
+            Number.isFinite(createdAtMs) &&
+            createdAtMs < cutoffMs) {
+          this.logger.debug(`查询 "${plan.label}" 跳过推文 ${tweet.id},超过 ${recentDays} 天窗口`);
           return;
         }
 

@@ -364,3 +364,35 @@ export function validateTwitterAccounts(config) {
     errors
   };
 }
+
+/**
+ * 验证全局采集时间窗口配置
+ * @param {Object} config
+ * @returns {{ valid: boolean, errors: string[] }}
+ */
+export function validateCollectionWindow(config) {
+  const errors = [];
+
+  if (typeof config !== 'object' || config === null) {
+    errors.push('配置必须是对象');
+    return { valid: false, errors };
+  }
+
+  const { recentDays } = config;
+  if (recentDays === undefined) {
+    errors.push('recentDays 是必填字段');
+  } else if (typeof recentDays !== 'number' || Number.isNaN(recentDays)) {
+    errors.push('recentDays 必须是数字');
+  } else if (!Number.isInteger(recentDays)) {
+    errors.push('recentDays 必须是整数');
+  } else if (recentDays <= 0) {
+    errors.push('recentDays 必须大于 0');
+  } else if (recentDays > 30) {
+    errors.push('recentDays 不能超过 30');
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors
+  };
+}
