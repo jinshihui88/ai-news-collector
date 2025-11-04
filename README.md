@@ -254,7 +254,7 @@ flowchart LR
     Wechat[WeChat MP Collector]
     Twitter[Twitter Collector]
   end
-  Collectors -->|NewsItem[]| Orchestrator
+  Collectors -->|NewsItem array| Orchestrator
   Orchestrator[Orchestrator 服务]
   Orchestrator --> LLM[LLM Client]
   Orchestrator --> Filters[Filter Rules]
