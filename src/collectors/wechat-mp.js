@@ -257,14 +257,15 @@ export class WeChatMPCollector extends BaseCollector {
     const summary = this.normalizeSummary(article.digest, title);
     const url = this.resolveArticleUrl(article.link);
     const createdAt = this.resolvePublishTime(article);
+    const metadata = this.extractMetadata(article, accountName);
 
     return new NewsItem({
       title,
       summary,
       url,
-      source: accountName,
+      source: 'WeChat-MP',
       createdAt,
-      metadata: this.extractMetadata(article)
+      metadata
     });
   }
 
@@ -424,7 +425,7 @@ export class WeChatMPCollector extends BaseCollector {
    * @param {Object} article
    * @returns {Object}
    */
-  extractMetadata(article) {
+  extractMetadata(article, accountName) {
     return {
       aid: article.aid,
       appmsgid: article.appmsgid,
@@ -436,7 +437,9 @@ export class WeChatMPCollector extends BaseCollector {
       item_show_type: article.item_show_type,
       likes: article.like_count,
       comments: article.comment_count,
-      views: article.read_num
+      views: article.read_num,
+      accountName,
+      sourceType: 'WeChat-MP'
     };
   }
 

@@ -1,6 +1,32 @@
 # AI 新闻采集器
 
-轻量级 AI 新闻采集器 - 从 AIBase、知识星球、微信公众号等数据源采集最新的 AI 相关新闻,使用 DeepSeek LLM 根据用户提供的正反面样例进行智能过滤,输出高质量新闻到 Markdown 文档。
+![Node.js Version](https://img.shields.io/badge/node-%3E%3D18.0.0-3C873A)
+![License](https://img.shields.io/badge/license-MIT-blue)
+![Status](https://img.shields.io/badge/status-active-brightgreen)
+
+轻量级 AI 新闻采集器, 聚合多平台的前沿 AI 资讯, 通过 LLM 智能筛选后输出结构化报告, 帮助团队和个人以更低成本维护信息优势。
+
+> ✨ **愿景**: 打造开源、易扩展的 AI 新闻枢纽, 让社区可以快速接入新的数据源、共享过滤策略, 共同追踪全球 AI 动态。
+
+## 目录
+
+- [功能特性](#功能特性)
+- [快速开始](#快速开始)
+  - [环境要求](#1-环境要求)
+  - [安装依赖](#2-安装依赖)
+  - [配置环境变量](#3-配置环境变量)
+  - [配置过滤规则](#4-配置过滤规则)
+  - [运行程序](#5-运行程序)
+- [项目结构与架构](#项目结构与架构)
+- [配置说明](#配置说明)
+- [测试与质量保障](#测试与质量保障)
+- [常见问题](#常见问题)
+- [技术栈](#技术栈)
+- [贡献指南](#贡献指南)
+- [路线图](#路线图)
+- [开发](#开发)
+- [License](#license)
+- [支持](#支持)
 
 ## 功能特性
 
@@ -167,13 +193,22 @@ npm start
 ```
 
 程序会自动:
-1. 从启用的数据源(AIBase/知识星球/微信公众号)采集最新内容
-2. 加载微信 Token 配置(如已配置)
-3. 使用 LLM 对所有内容进行混合评分
-4. 按动态阈值过滤出高质量内容
-5. 生成带时间戳的 Markdown 报告(示例: \`output/filtered-news-20251102-223726.md\`),每个数据源以表格方式展示结果
+1. 读取启用的数据源配置 (AIBase / 知识星球 / 微信公众号 / Twitter)
+2. 统一应用采集时间窗口、并发控制等运行参数
+3. 使用 DeepSeek LLM 结合正负向样例进行批量评分
+4. 根据动态阈值保留重点新闻
+5. 生成带时间戳的 Markdown 报告(示例: `output/filtered-news-20251102-223726.md`), 每个数据源以表格方式呈现
 
-## 项目结构
+> 📄 **输出示例 (节选)**
+
+```markdown
+| 来源 | 标题 | 摘要 | 得分 | 互动指标 |
+|------|------|------|------|----------|
+| WeChat-MP · AI科技评论 | 百度推出的 AI 播客平台 | 一键将文字转换为播客, 支持多音色与字幕编辑, 快速生成高质量节目。 | 4.5 | 阅读量: 2.3万 |
+| Twitter · AnthropicAI | Claude 代码助手正式发布 | 新增原生安装器, 稳定性提升并移除 Node.js 依赖。 | 4.2 | 点赞: 3.1k / 转推: 520 |
+```
+
+## 项目结构与架构
 
 ```
 ai-news-collector/
@@ -211,6 +246,30 @@ ai-news-collector/
 └── package.json
 ```
 
+```mermaid
+flowchart LR
+  subgraph Collectors[采集层]
+    Aibase[AIBase Collector]
+    Zsxq[ZSXQ Collector]
+    Wechat[WeChat MP Collector]
+    Twitter[Twitter Collector]
+  end
+  Collectors -->|NewsItem[]| Orchestrator
+  Orchestrator[Orchestrator 服务]
+  Orchestrator --> LLM[LLM Client]
+  Orchestrator --> Filters[Filter Rules]
+  Orchestrator --> Markdown[Markdown Generator]
+  Markdown --> Report[带时间戳 Markdown 报告]
+```
+
+各模块职责概览:
+
+- **Collectors**: 针对具体来源实现采集逻辑, 统一返回 `NewsItem` 数据结构。
+- **Orchestrator**: 协调采集结果、批量评分与动态阈值过滤。
+- **LLM Client**: 封装 DeepSeek API 调用、批次切分与重试机制。
+- **Markdown Generator**: 负责将筛选后的新闻渲染为表格化周报与统计摘要。
+- **Config Loader & Validators**: 统一读取 JSON 配置并提供结构化校验。
+
 ## 配置说明
 
 ### 环境变量
@@ -235,20 +294,9 @@ ai-news-collector/
 - 例如,禁用知识星球: 将 \`ZSXQ_CONFIG.enabled\` 设为 \`false\`
 
 **配置知识星球**:
-- 在 `ZSXQ_CONFIG.config.groups` 中添加要采集的星球
-- 为每个星球配置一个或多个话题(hashtags)
-- 示例:
-```javascript
-{
-  groupId: '15552545485212',  // 星球ID(从URL提取)
-  groupName: 'AI风向标',       // 星球名称
-  hashtags: [
-    { id: '15555541155522', name: 'AI风向标' },
-    { id: '15555541155523', name: '中标' }
-  ]
-}
-```
-- ⚠️ 知识星球话题接口单次最多返回 20 条,程序会根据 `maxItems` 自动降级并分批拉取
+- 在 `ZSXQ_CONFIG.config.groups` 中添加星球与话题, `groupId`/`hashtags[].id` 可从星球 URL 及接口返回中获取
+- ⚠️ 知识星球话题接口单次最多返回 20 条, 程序会按 `maxItems` 自动分页采集
+- 详细图文步骤见 [docs/setting-up-zsxq.md](docs/setting-up-zsxq.md)
 
 **配置 Twitter**:
 - 在 `TWITTER_CONFIG` 中开启 `enabled`,并确保 `.env` 中填入 Composio 凭证
@@ -279,6 +327,14 @@ ai-news-collector/
 - 标题: 必填,1-200 字符
 - 摘要: 必填,**100-200 字符**(严格要求)
 - 理由: 可选,说明为什么喜欢/不喜欢
+
+## 测试与质量保障
+
+- 单元测试: `npm test`
+- 覆盖率报告: `npm run test:coverage`
+- Twitter 采集联调: `npm run demo:twitter`
+
+> ✅ 在提交 PR 之前请至少运行一次 `npm test`, 并在描述中留下测试结果或截图。
 
 ## 成本估算
 
@@ -352,6 +408,23 @@ ai-news-collector/
 - **LLM**: DeepSeek API (使用 OpenAI SDK)
 - **网页抓取**: Cheerio + Axios
 - **工具库**: dotenv, string-similarity
+
+## 贡献指南
+
+我们采用 [OpenSpec](openspec/AGENTS.md) 协议化协作流程, 欢迎社区贡献者参与:
+
+1. Fork 仓库并基于 `main` 创建特性分支 (命名建议 `feature/<topic>` )。
+2. 使用 `openspec list` 了解现有提案或通过 `openspec create` 撰写新的变更说明。
+3. 在改动前运行 `npm install`, 遵循项目编码规范与中文注释约定。
+4. 提交前执行 `npm test`, 并在 PR 描述中说明修改动机、测试结果和影响面。
+5. 遇到问题可通过 Issue / Discussions 反馈, 也欢迎贡献新的数据源、过滤策略或文档。
+
+## 路线图
+
+- [ ] 接入 GitHub Trending、Hacker News、Reddit 等开源情报源
+- [ ] 引入 CI 流水线并公开测试覆盖率徽章
+- [ ] 提供可选的 Docker 镜像与一键部署方案
+- [ ] 构建历史数据存储与可视化 Dashboard
 
 ## 开发
 

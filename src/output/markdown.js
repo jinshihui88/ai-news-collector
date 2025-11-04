@@ -144,6 +144,7 @@ ${sourceSections.join('\n\n')}`;
    * @returns {string}
    */
   formatSourceSection(source, items) {
+    const displayName = this.getSourceDisplayName(source);
     const header =
       '| 序号 | 标题 | 评分 | 发布时间 | 摘要 | 评分理由 | 互动数据 |\n' +
       '|------|------|------|----------|------|----------|----------|';
@@ -151,7 +152,7 @@ ${sourceSections.join('\n\n')}`;
       this.formatNewsRow(item, index + 1)
     );
 
-    return `### 📡 ${source} (${items.length} 条)\n\n${header}\n${rows.join('\n')}`;
+    return `### 📡 ${displayName} (${items.length} 条)\n\n${header}\n${rows.join('\n')}`;
   }
 
   /**
@@ -191,6 +192,7 @@ ${sourceSections.join('\n\n')}`;
    */
   formatMetadata(metadata = {}) {
     const parts = [];
+    if (metadata.accountName) parts.push(`公众号: ${metadata.accountName}`);
     if (metadata.author) parts.push(`作者: ${metadata.author}`);
     if (metadata.likes !== undefined) parts.push(`👍 ${metadata.likes}`);
     if (metadata.comments !== undefined) parts.push(`💬 ${metadata.comments}`);
@@ -272,6 +274,22 @@ ${sourceSections.join('\n\n')}`;
       acc[source].push(item);
       return acc;
     }, {});
+  }
+
+  /**
+   * 将内部数据源名称转换为展示名称
+   * @param {string} source
+   * @returns {string}
+   */
+  getSourceDisplayName(source) {
+    const mapping = {
+      'WeChat-MP': '微信公众号',
+      'AIBase': 'AIBase',
+      'Twitter': 'Twitter',
+      '知识星球': '知识星球'
+    };
+
+    return mapping[source] || source;
   }
 
   /**
