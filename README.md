@@ -8,7 +8,7 @@
 
 信息量爆炸？一条条刷？低质量营销号？没时间？
 
-AI 信息采集过滤器统统，统统给你搞定🔥
+**AI 信息采集过滤器统统，统统给你搞定🔥**
 
 > ✨ **愿景**: 致力于从海量资讯中，筛选出精准有效的信息，提升信息获取效率
 
@@ -72,9 +72,8 @@ DEEPSEEK_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxx
 5. 复制完整的 Cookie 值(必须包含 `zsxq_access_token` 字段)
 6. 将复制的 Cookie 粘贴到 `.env` 文件中
 
-**注意**:
+**⚠️注意**:
 - 不要使用 `document.cookie`,因为 `zsxq_access_token` 是 HttpOnly Cookie,无法通过 JavaScript 访问
-- Cookie 示例格式: `zsxq_access_token=xxxxxxxxxx; sensorsdata2015jssdkcross=xxxxxxxxxx; abtest_env=product`
 
 **配置微信公众号采集**(可选):
 
@@ -99,7 +98,7 @@ WECHAT_COOKIE=完整的cookie字符串
 示例:
 ```bash
 WECHAT_TOKEN=1234567890
-WECHAT_COOKIE=slave_user=gh_xxxxx; slave_sid=xxxxx; bizuin=xxxxx
+WECHAT_COOKIE='你的cookie'
 ```
 
 **第二步: 配置要采集的公众号**
@@ -118,12 +117,8 @@ vim config/wechat-accounts.json
 ```json
 [
   {
-    "fakeid": "MzI1NjIyMTAwMA==",
-    "nickname": "AI科技评论"
-  },
-  {
-    "fakeid": "MzUxOTU3NjE4MA==",
-    "nickname": "量子位"
+    "fakeid": "MzU0MTkwOTUyMA==",
+    "nickname": "骁哥AI编程"
   }
 ]
 ```
@@ -309,89 +304,8 @@ flowchart LR
 ### 样例要求
 
 - 标题: 必填,1-200 字符
-- 摘要: 必填,**100-200 字符**(严格要求)
+- 摘要: 必填,**10-500 字符**(严格要求)
 - 理由: 可选,说明为什么喜欢/不喜欢
-
-## 测试与质量保障
-
-- 单元测试: `npm test`
-- 覆盖率报告: `npm run test:coverage`
-- Twitter 采集联调: `npm run demo:twitter`
-
-> ✅ 在提交 PR 之前请至少运行一次 `npm test`, 并在描述中留下测试结果或截图。
-
-## 成本估算
-
-使用 DeepSeek API 的成本极低:
-
-- Input tokens: $0.27 / 1M tokens
-- Output tokens: $1.10 / 1M tokens
-- Cache hit tokens: $0.027 / 1M tokens (仅 10%)
-
-**预估成本**: 按默认配置(每个数据源约 10 条,总数 40-60 条)运行一次完整流程,成本约 **$0.05-0.10**
-
-## 常见问题
-
-### 1. 如何启用/禁用数据源?
-
-编辑 \`src/config/datasources.js\`:
-- 设置 \`AIBASE_CONFIG.enabled = false\` 禁用 AIBase
-- 设置 \`ZSXQ_CONFIG.enabled = false\` 禁用知识星球
-- 设置 \`TWITTER_CONFIG.enabled = true\` 启用 Twitter(需同步配置 Composio 凭证和推主列表)
-
-### 2. 知识星球采集失败怎么办?
-
-检查:
-1. \`ZSXQ_COOKIE\` 是否正确设置
-2. Cookie 是否过期(需要重新获取)
-3. 账号是否有权访问配置的星球
-4. 星球 ID 和标签名称是否正确
-
-查看日志获取详细错误信息。
-
-### 3. 为什么采集不到新闻?
-
-可能的原因:
-- 网站结构发生变化
-- 网络连接问题
-- HTML 选择器需要更新
-- Cookie 认证失败(知识星球)
-
-可以查看日志获取详细错误信息。
-
-### 4. LLM 评分失败怎么办?
-
-检查:
-1. \`DEEPSEEK_API_KEY\` 是否正确
-2. API 密钥是否有余额
-3. 网络是否可以访问 DeepSeek API
-
-### 5. 如何调整过滤阈值?
-
-编辑对应数据源的 `config/filter-rules-*.json` 中的 `thresholdConfig`:
-- 想要更多新闻: 增大 \`maxPercentage\` 或 \`preferredCount\`
-- 想要更少但更精准: 减小 \`minPercentage\` 或 \`preferredCount\`
-
-### 6. 如何添加更多知识星球?
-
-编辑 \`src/config/datasources.js\` 中的 \`ZSXQ_CONFIG.config.groups\`,添加新的星球配置:
-```javascript
-{
-  groupId: 'your_group_id',     // 从星球URL中提取
-  groupName: '星球名称',
-  hashtags: [
-    { id: '15555541155522', name: 'AI风向标' },
-    { id: '15555541155523', name: '中标' }
-  ]
-}
-```
-
-## 技术栈
-
-- **运行时**: Node.js 18+ (ESM)
-- **LLM**: DeepSeek API (使用 OpenAI SDK)
-- **网页抓取**: Cheerio + Axios
-- **工具库**: dotenv, string-similarity
 
 ## 贡献指南
 
