@@ -14,18 +14,15 @@
 
 ## 🤔 干啥的？
 
-公众号、星球、资讯站、特推...（以后还会有更多）
+公众号、知识星球、各大资讯站、特推...
 
 信息量爆炸？一条条刷？低质量营销号？没时间？
 
-**AI 信息采集过滤器统统，统统给你搞定🔥**
+**AI 信息采集过滤器统统，分分钟给你搞定🤓**
 
-## 功能特性
+## 🔥 功能特性
 
-- ✅ **多数据源采集**: 支持 AIBase、知识星球、微信公众号和 Twitter,可按需扩展更多来源
-- ✅ **智能采集**: 自动抓取最新 AI 新闻和社群讨论
-- ✅ **微信公众号采集**: 通过二维码扫码登录,零配置采集公众号文章
-- ✅ **Twitter 采集**: 基于 Composio 一键接入,支持关注推主与关键词搜索
+- ✅ **多数据源采集**: 目前支持 AIBase、知识星球、微信公众号、Twitter...
 - ✅ **LLM 评分**: 使用 DeepSeek API 根据用户偏好对内容进行智能评分
 - ✅ **动态过滤**: 自动保留得分最高的 10-30% 内容
 - ✅ **配置化**: 通过 JSON 配置文件设置正反面样例
@@ -34,15 +31,15 @@
 - ✅ **按源分组**: Markdown 报告按数据源分组展示
 - 🆕 **统一时间窗口**: `config/collection-window.json` 一次性控制所有数据源的采集天数
 
-## 快速开始
+## ⚡️ 快速开始
 
-### 1. 环境要求
+### 1. 前置依赖
 
-- Node.js 18+ (LTS 版本)
+- Node.js 18+
 - DeepSeek API Key ([获取地址](https://platform.deepseek.com/api_keys))
-- (可选) 知识星球 Cookie - 如需采集知识星球内容
-- (可选) 微信公众号 Token/Cookie - 如需采集公众号文章(个人订阅号即可)
-- (可选) Composio API Key + Twitter 连接 ID/user_id - 如需采集 Twitter 资讯
+- (可选) 知识星球账号
+- (可选) 微信公众号账号
+- (可选) Twitter账号
 
 ### 2. 安装依赖
 
@@ -63,115 +60,20 @@ cp .env.example .env
 ```env
 DEEPSEEK_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxx
 
-# 可选: Twitter 采集所需的 Composio 凭证
-# COMPOSIO_API_KEY=ak_xxxxxxxxxxxxx
-# COMPOSIO_CONNECTION_ID=ca_xxxxxxxxxxxxx
-# COMPOSIO_USER_ID=pg-test-xxxxxxxxxxxxxxx
+WECHAT_TOKEN=xxxxxxx
+WECHAT_COOKIE='xxxxxxxxxxx'
 
-# 可选:知识星球 Cookie (如需采集知识星球内容)
-# ZSXQ_COOKIE=your_zsxq_cookie_here
+ZSXQ_COOKIE='xxxxxxxxxxx'
+
+COMPOSIO_API_KEY=xxxxxxxxx
+COMPOSIO_CONNECTION_ID=xxxxxxxxx
+COMPOSIO_USER_ID=xxxxxxxxx
 ```
 
-**获取知识星球 Cookie**:
-1. 浏览器登录 https://wx.zsxq.com
-2. 打开开发者工具 (F12) -> Network 标签
-3. 刷新页面,找到请求 `https://api.zsxq.com` 开头的请求(例如 topics 请求)
-4. 点击该请求,在右侧 Headers 面板中找到 "Cookie:" 请求头
-5. 复制完整的 Cookie 值(必须包含 `zsxq_access_token` 字段)
-6. 将复制的 Cookie 粘贴到 `.env` 文件中
+[如何获取微信公众号 Token 和 Cookie](docs/how-to-get-wechat-token.md)
 
-**⚠️注意**:
-- 不要使用 `document.cookie`,因为 `zsxq_access_token` 是 HttpOnly Cookie,无法通过 JavaScript 访问
 
-**配置微信公众号采集**(可选):
 
-**第一步: 获取 Token 和 Cookie**
-
-1. 浏览器登录微信公众号后台 https://mp.weixin.qq.com/
-2. 打开浏览器开发者工具 (F12 或 Command+Option+I)
-3. 从 URL 中复制 `token` 参数
-4. 从 Network → Headers → Cookie 中复制完整的 Cookie 值
-5. 添加到 `.env` 文件
-
-详细图文教程: [如何获取微信公众号 Token 和 Cookie](docs/how-to-get-wechat-token.md)
-
-**快速配置**:
-
-编辑 `.env` 文件,添加以下配置:
-```bash
-WECHAT_TOKEN=你的token值
-WECHAT_COOKIE=完整的cookie字符串
-```
-
-示例:
-```bash
-WECHAT_TOKEN=1234567890
-WECHAT_COOKIE='你的cookie'
-```
-
-**第二步: 配置要采集的公众号**
-
-编辑 `config/wechat-accounts.json` 文件:
-
-```bash
-# 如果文件不存在,从示例文件复制
-cp config/wechat-accounts.example.json config/wechat-accounts.json
-
-# 编辑配置
-vim config/wechat-accounts.json
-```
-
-添加要采集的公众号:
-```json
-[
-  {
-    "fakeid": "MzU0MTkwOTUyMA==",
-    "nickname": "骁哥AI编程"
-  }
-]
-```
-
-**如何获取 Fakeid**:
-1. 登录你的公众号后台 https://mp.weixin.qq.com/
-2. 进入"素材管理" → "新建图文消息"
-3. 点击"超链接" → "文章链接"
-4. 搜索目标公众号名称
-5. 打开 DevTools (F12) → Network 标签
-6. 从请求 URL 中复制 `fakeid` 参数
-
-**注意**: Token 有效期约 7 天,过期后需要重新获取
-
-**配置 Twitter 采集**(可选):
-
-1. 登录 [Composio 控制台](https://app.composio.dev/),在 Settings → API Keys 中创建 API Key 并写入 `.env`。
-2. 在 Connections 页面搜索 Twitter,完成 OAuth 授权后复制 Connection ID(`ca_xxx`)。
-3. 运行 `npm run composio:connection` 或查看连接详情,将输出的 `user_id` 填入 `.env` 的 `COMPOSIO_USER_ID`。
-4. 复制示例配置: `cp config/twitter-accounts.example.json config/twitter-accounts.json`
-5. 编辑 `config/twitter-accounts.json`,填写需要关注的推主。未配置推主时会使用 `keywords` 列表进行回退搜索。
-
-### 4. 配置过滤规则
-
-为每个启用的数据源准备独立的过滤配置,示例文件位于 `config/filter-rules-*.json`。
-请至少补充你要使用的数据源对应的文件,结构一致:
-
-```json
-{
-  "positiveExamples": [
-    {
-      "title": "你想看到的新闻类型的标题",
-      "summary": "新闻摘要(100-200字符)",
-      "reason": "为什么喜欢这类新闻"
-    }
-  ],
-  "negativeExamples": [
-    {
-      "title": "你不想看到的新闻类型的标题",
-      "summary": "新闻摘要(100-200字符)",
-      "reason": "为什么不喜欢这类新闻"
-    }
-  ]
-}
-```
 
 ### 5. 运行程序
 
