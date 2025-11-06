@@ -129,7 +129,22 @@ npm start
 ![](https://cdn.ziliu.online/images/2025/11/47435f6b-17c7-4435-8c05-a8d017875e89.jpg)
 
 ## 💬 欢迎联系我
-<img src="https://cdn.ziliu.online/images/2025/11/cd418ef1-dd65-403e-8f8c-f1b7ecf1f5f0.jpg" width="200" />
+🙋 **关于我（李骁）：**
+
+🔭 目前在大厂担任 技术负责人
+🔍 具备全栈开发能力，包括设计、后台、客户端等全栈研发经验
+📚 [Trae Expert](https://lcnziv86vkx6.feishu.cn/wiki/JkuHwnMseiiO6fkm3h1cz41Gn8c)
+🎓 AI编程技术分享者，专注AI技术教学
+🤖 长期聚焦 AI 方向（尤其在 AI 编程、智能 Agent 领域有持续的研究与实践），曾先后在公司内部技术分享会及行业外部交流活动中，多次围绕 AI 相关技术主题做分享；业余时间我也会持续深耕 AI 前沿技术，保持对行业动态的敏锐关注。
+
+**有Bug？有需求？想聊AI？想面基？欢迎 🤗**
+
+**联系方式：**
+
+| 微信 | 公众号 |
+|------|------|
+| ![](https://cdn.ziliu.online/images/2025/11/cd418ef1-dd65-403e-8f8c-f1b7ecf1f5f0.jpg)| ![](https://cdn.ziliu.online/images/2025/11/5fd69718-89a3-43bc-9814-7f12c78d26da.jpg) |
+
 
 ## 📄 开源协议
 
