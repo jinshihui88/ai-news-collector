@@ -109,7 +109,6 @@ COMPOSIO_USER_ID=xxxxxxxxx
 ```bash
 npm start
 ```
-![](https://cdn.ziliu.online/images/2025/11/bab47bc6-664f-4cb4-a1b9-bc5fc57dae61.jpg)
 
 程序会自动:
 1. 读取启用的数据源配置 (AIBase / 知识星球 / 微信公众号 / Twitter)
@@ -118,7 +117,10 @@ npm start
 4. 根据动态阈值保留重点新闻
 5. 生成带时间戳的 Markdown 报告(示例: `output/filtered-news-20251102-223726.md`), 每个数据源以表格方式呈现
 
-![](https://cdn.ziliu.online/images/2025/11/df31e1c0-2a87-4c08-bf28-a731ff5b6b9b.jpg)
+
+| 开始采集 | 采集结束 |
+|------|------|
+| ![](https://cdn.ziliu.online/images/2025/11/bab47bc6-664f-4cb4-a1b9-bc5fc57dae61.jpg)| ![](https://cdn.ziliu.online/images/2025/11/df31e1c0-2a87-4c08-bf28-a731ff5b6b9b.jpg) |
 
 📄 **输出示例**
 
