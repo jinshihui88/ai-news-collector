@@ -51,9 +51,6 @@ tmp/
 temp/
 *.tmp
 
-# 配置隐私文件
-config/wechat-accounts.json
-
 # 输出文件
 output/
 data/

@@ -69,13 +69,18 @@ COMPOSIO_API_KEY=xxxxxxxxx
 COMPOSIO_CONNECTION_ID=xxxxxxxxx
 COMPOSIO_USER_ID=xxxxxxxxx
 ```
+
 如何配置请见👇
+
 [如何配置DeepSeek](docs/.env配置/如何配置DeepSeek.md)
+
 [如何接入公众号](docs/.env配置/如何接入公众号.md)
+
 [如何接入知识星球](docs/.env配置/如何接入知识星球.md)
+
 [如何接入推特](docs/.env配置/如何接入推特.md)
 
-
+### 4. 配置关注（公众号/知识星球/推特）
 
 
 ### 5. 运行程序
